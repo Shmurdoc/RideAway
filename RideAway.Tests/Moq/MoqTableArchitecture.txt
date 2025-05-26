@@ -1,0 +1,13 @@
+﻿RideAway.Tests/
+│── Moq/
+│   ├── MockRideRepository.cs   → Entry point that assembles test dependencies
+│   ├── Factories/
+│   │   ├── RideFactory.cs       → Uses Bogus to generate ride data
+│   │   ├── UserFactory.cs       → Generates mock users
+│   ├── Mocks/
+│   │   ├── GenericRepositoryMock.cs → Mocking IGenericRepository setup
+│   │   ├── RideRepositoryMock.cs → Mocking IRideRepository setup
+│   │   ├── UnitOfWorkMock.cs     → Mocking IUnitOfWork setup
+|   |   ├── UserRepositoryMock.cs → Mocking IUserRepository setup
+│   ├── Utilities/
+│   │   ├── GuidGenerator.cs      → Generates consistent GUIDs for testing
