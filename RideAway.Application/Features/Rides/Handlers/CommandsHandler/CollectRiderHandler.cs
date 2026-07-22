@@ -28,9 +28,6 @@ public class CollectRiderHandler : IRequestHandler<CollectRiderCommand, Ride>
         _logger = logger;
     }
 
-    // trying IPipelineBehavior<TRequest, TResponse> and logging handeling for the first time
-    // although recommanded, use of it will only be in this handler alone
-    // for practice only
     public async Task<Ride> Handle(CollectRiderCommand request, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Collecting rider for RideId: {RideId}, DriverId: {DriverId}", request.RiderId, request.DriverId);
@@ -68,45 +65,5 @@ public class CollectRiderHandler : IRequestHandler<CollectRiderCommand, Ride>
 
         return ride;
     }
-
-
-    //public class CollectRiderHandler : IRequestHandler<CollectRiderCommand, bool>
-    //{
-    //    private readonly IUnitOfWork _unitOfWork;
-    //    private readonly IGoogleMapsApi _googleMapsApi;
-    //    private readonly IGeoCodingService _geocodingService;
-
-    //    public CollectRiderHandler(IUnitOfWork unitOfWork, IGoogleMapsApi googleMapsApi, IGeoCodingService geocodingService)
-    //    {
-    //        _unitOfWork = unitOfWork;
-    //        _googleMapsApi = googleMapsApi;
-    //        _geocodingService = geocodingService;
-    //    }
-
-    //public async Task<bool> Handle(CollectRiderCommand request, CancellationToken cancellationToken)
-    //{
-    //    var ride = await _unitOfWork.RideRepository.GetByIdAsync(request.RideId);
-
-    //    if (ride == null || ride.DriverId != request.DriverId)
-    //        throw new Exception("Ride not found or driver is not assigned to this ride.");
-
-    //    if (ride.Status != RideStatus.Accepted)
-    //        throw new Exception("Ride must be in 'Accepted' state before collecting the rider.");
-
-    //    //Convert CurrentLocation from String Address to Location
-    //    var currentLocation = await _geocodingService.ConvertAddressToLocationAsync(ride.Driver.CurrentLocation);
-    //    var pickupLocaton = await _geocodingService.ConvertAddressToLocationAsync(ride.PickupLocation);
-
-    //    // Simulating navigation logic (use Google Maps API for real-world navigation)
-    //    var route = await _googleMapsApi.GetRouteAsync(currentLocation, pickupLocaton);
-    //    Console.WriteLine($"Navigation Route: {route}");
-
-    //    // Update ride status
-    //    ride.Status = RideStatus.InProgress;
-    //    await _unitOfWork.SaveChangesAsync();
-
-    //    return true;
-    //}
-    //}
 }
 }

@@ -76,27 +76,6 @@ namespace RideAway.Application.Services
             return _mapper.Map<List<RideDTO>>(nearbyRides);
         }
 
-        //public async Task<User?> FindNearestDriverAsync(Location pickupLocation)
-        //{
-        //    var drivers = await _unitOfWork.UserRepository.GetAllAsync(u =>
-        //        u.Role == UserRole.Driver && !string.IsNullOrWhiteSpace(u.CurrentLocation));
-
-        //    var nearestDriver = await Task.WhenAll(drivers.Select(async driver =>
-        //    {
-        //        var currentLocation = await _geocodingService.ConvertAddressToLocationAsync(driver.CurrentLocation!);
-        //        var distance = await _locationService.GetDistanceAsync(currentLocation, pickupLocation);
-        //        return (driver, distance);
-        //    }));
-
-        //    var closest = nearestDriver
-        //        .Where(d => d.distance <= 50)
-        //        .OrderBy(d => d.distance)
-        //        .FirstOrDefault();
-
-        //    _logger.LogInformation("Nearest driver ID: {DriverId} at distance: {Distance}km", closest.driver?.Id, closest.distance);
-        //    return closest.driver;
-        //}
-
         public async Task<decimal> CalculateFareAsync(Location pickup, Location destination, RideCategory rideCategory)
         {
             var fare = await _fareCalculationService.CalculateFareAsync(pickup, destination, rideCategory);
