@@ -41,6 +41,7 @@ public class ExceptionMiddleware
             KeyNotFoundException => (HttpStatusCode.NotFound, ex.Message),
             UnauthorizedAccessException => (HttpStatusCode.Forbidden, "You are not authorized to perform this action."),
             ArgumentException => (HttpStatusCode.BadRequest, ex.Message),
+            System.Data.Common.DbException => (HttpStatusCode.ServiceUnavailable, "The database is currently unavailable. Please try again later."),
             _ => (HttpStatusCode.InternalServerError, "An unexpected error occurred. Please try again later.")
         };
 
