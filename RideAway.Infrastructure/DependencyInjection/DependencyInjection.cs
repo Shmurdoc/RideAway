@@ -1,19 +1,22 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using System.Text;
+using MediatR;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.Tokens;
+using RideAway.Application.Common.Behaviors;
+using RideAway.Application.Features.Rides.Handlers.Queries;
+using RideAway.Application.IRepositories;
+using RideAway.Application.IServices;
+using RideAway.Application.IServices.IAuthentication;
+using RideAway.Application.IServices.INotification;
+using RideAway.Application.Services;
+using RideAway.Domain.Service;
 using RideAway.Infrastructure.Authentication;
+using RideAway.Infrastructure.Mappers;
 using RideAway.Infrastructure.Notifications;
 using RideAway.Infrastructure.Payments;
 using RideAway.Infrastructure.Persistence.Repositories;
-using RideAway.Application.IRepositories;
-using Microsoft.Extensions.Configuration;
-using RideAway.Application.IServices;
-using RideAway.Application.Services;
-using RideAway.Application.IServices.INotification;
-using RideAway.Application.IServices.IAuthentication;
-using RideAway.Infrastructure.Mappers;
-using RideAway.Application.Features.Rides.Handlers.Queries;
-using MediatR;
-using RideAway.Application.Common.Behaviors;
-using RideAway.Domain.Service;
 
 namespace RideAway.Infrastructure.DependencyInjection
 {
@@ -22,13 +25,13 @@ namespace RideAway.Infrastructure.DependencyInjection
         public static void AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
         {
             services.AddHttpClient<IGoogleMapsApi, GoogleMapsApiService>();
+            services.AddHttpClient<IGeoCodingService, GoogleGeocodingService>();
 
             services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
             services.AddScoped<IEmailService, EmailService>();
             services.AddScoped<ISmsService, SmsService>();
             services.AddScoped<IStripePaymentService, StripePaymentService>();
             services.AddScoped<ILocationService, GoogleMapsLocationService>();
-            services.AddScoped<IGeoCodingService, GoogleGeocodingService>();
 
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IRideRepository, RideRepository>();
@@ -47,6 +50,35 @@ namespace RideAway.Infrastructure.DependencyInjection
             services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(GetAvailableRidesHandler).Assembly));
 
             services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
+
+            var jwtKey = configuration["Jwt:Key"];
+            if (!string.IsNullOrEmpty(jwtKey))
+            {
+                services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                    .AddJwtBearer(options =>
+                    {
+                        options.TokenValidationParameters = new TokenValidationParameters
+                        {
+                            ValidateIssuer = true,
+                            ValidateAudience = false,
+                            ValidateLifetime = true,
+                            ValidateIssuerSigningKey = true,
+                            ValidIssuer = configuration["Jwt:Issuer"],
+                            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+                        };
+                    });
+            }
+
+            services.AddAuthorization();
+            services.AddCors(options =>
+            {
+                options.AddDefaultPolicy(policy =>
+                {
+                    policy.AllowAnyOrigin()
+                          .AllowAnyMethod()
+                          .AllowAnyHeader();
+                });
+            });
         }
     }
 }
