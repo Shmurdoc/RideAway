@@ -6,7 +6,8 @@ using RideAway.Application.IServices;
 using RideAway.Domain.Entities;
 using RideAway.Domain.Value_Object;
 using RideAway.Tests.Moq.Factories;
-using RideAway.Application.Features.Ride.Commands;
+using RideAway.Application.Features.Rides.Commands;
+using RideAway.Application.Features.Rides.Handlers.Commands;
 
 namespace RideAway.Tests.Application.Features.Rides.Commands;
 

@@ -1,6 +1,7 @@
 ﻿using MediatR;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Mvc;
+using RideAway.API.Controllers;
 using RideAway.Application.Features.Rides.Commands;
 using RideAway.Application.Features.Payments.Commands;
 using RideAway.Application.Features.Rides.Queries;
@@ -217,7 +218,7 @@ public class UserControllerTests
         var result = await _controller.RequestRide(dto);
 
         var okResult = Assert.IsType<OkObjectResult>(result);
-        var returnedRide = Assert.IsType<RideAlias>(okResult.Value);
+        var returnedRide = Assert.IsType<Ride>(okResult.Value);
         Assert.Equal(expectedRide.DriverId, returnedRide.DriverId);
         Assert.Equal(expectedRide.PickupLocation, returnedRide.PickupLocation);
         Assert.Equal(expectedRide.Destination, returnedRide.Destination);

@@ -1,12 +1,14 @@
 ﻿using MediatR;
 using Microsoft.Extensions.Logging;
-using RideAway.Application.Features.Ride.Commands;
+using RideAway.Application.Features.Rides.Commands;
 using RideAway.Application.IRepositories;
 using RideAway.Application.IServices;
 using RideAway.Domain.Entities;
 using RideAway.Domain.Value_Object;
 using RideAway.Domain.Exceptions;
 
+namespace RideAway.Application.Features.Rides.Handlers.Commands
+{
 public class CollectRiderHandler : IRequestHandler<CollectRiderCommand, Ride>
 {
     private readonly IUnitOfWork _unitOfWork;
@@ -106,4 +108,5 @@ public class CollectRiderHandler : IRequestHandler<CollectRiderCommand, Ride>
     //    return true;
     //}
     //}
+}
 }

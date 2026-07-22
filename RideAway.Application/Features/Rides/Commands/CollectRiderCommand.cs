@@ -1,5 +1,5 @@
 ﻿using MediatR;
-namespace RideAway.Application.Features.Ride.Commands
+namespace RideAway.Application.Features.Rides.Commands
 {
     public record CollectRiderCommand(Guid RiderId, Guid DriverId ) : IRequest<RideAway.Domain.Entities.Ride>;
 }

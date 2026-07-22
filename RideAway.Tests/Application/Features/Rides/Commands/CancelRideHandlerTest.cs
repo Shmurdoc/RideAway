@@ -31,8 +31,8 @@ namespace RideAway.Tests.Application.Features.Rides.Commands
         public async Task Handle_ShouldCancelRide_WhenRideIsValid()
         {
             // Arrange
-            var ride = new RideAlias(pickup: ("123, Start Point"),
-                                     destination: ("456, End Point"),
+            var ride = new Ride(pickup: "123, Start Point",
+                                     destination: "456, End Point",
                                      fare: 100);
             ride.Status = RideStatus.Accepted; // Ensure the ride is active and valid for cancellation
 
@@ -72,7 +72,7 @@ namespace RideAway.Tests.Application.Features.Rides.Commands
             var command = new CancelRideCommand(rideId);
 
             _mockRideRepository.Setup(repo => repo.GetByIdAsync(rideId))
-                               .ReturnsAsync((RideAlias?)null);
+                               .ReturnsAsync((Ride?)null);
 
             var handler = new CancelRideHandler(_mockUnitOfWork.Object, _mockLogger.Object);
 
@@ -97,9 +97,9 @@ namespace RideAway.Tests.Application.Features.Rides.Commands
         public async Task Handle_ShouldThrowException_WhenRideIsCompleted()
         {
             // Arrange
-            var pickup = ("123, Start Point");
-            var destination = ("456, End Point");
-            var ride = new RideAlias(pickup: pickup, destination: destination, fare: 50)
+            var pickup = "123, Start Point";
+            var destination = "456, End Point";
+            var ride = new Ride(pickup: pickup, destination: destination, fare: 50)
             {
                 Status = RideStatus.Completed
             };

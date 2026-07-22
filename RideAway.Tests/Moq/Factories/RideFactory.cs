@@ -51,9 +51,9 @@ namespace RideAway.Tests.Moq.Factories
             };
         }
 
-        public static RideAlias GenerateRideAlias()
+        public static Ride GenerateRideAlias()
         {
-            var faker = new Faker<RideAlias>()
+            var faker = new Faker<Ride>()
                 .RuleFor(x => x.DriverId, f => f.Random.Guid())
                 .RuleFor(x => x.PickupLocation, f => f.Address.FullAddress())
                 .RuleFor(x => x.Destination, f => f.Address.FullAddress())

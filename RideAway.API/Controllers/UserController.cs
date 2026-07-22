@@ -1,5 +1,6 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using RideAway.Application.DTOs;
 using RideAway.Application.Features.Payments.Commands;
 using RideAway.Application.Features.Rides.Commands;
 using RideAway.Application.Features.Rides.Queries;

@@ -21,7 +21,7 @@ namespace RideAway.Application.Features.Rides.Handlers.Commands
             _rideFactory = rideFactory;
         }
 
-        public async Task<RideAlias> Handle(RequestRideCommand request, CancellationToken cancellationToken)
+        public async Task<RideAway.Domain.Entities.Ride> Handle(RequestRideCommand request, CancellationToken cancellationToken)
         {
             var nearestDriver = request.CreateRideRequestDTO.DriverId;
 

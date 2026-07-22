@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using RideAway.Infrastructure.Authentication;
 using RideAway.Infrastructure.Notifications;
+using RideAway.Infrastructure.Payments;
 using RideAway.Infrastructure.Persistence.Repositories;
 using RideAway.Application.IRepositories;
 using Microsoft.Extensions.Configuration;
