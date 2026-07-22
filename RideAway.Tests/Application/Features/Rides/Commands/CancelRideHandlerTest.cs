@@ -7,7 +7,7 @@ using RideAway.Application.IRepositories;
 using RideAway.Domain.Entities;
 using RideAway.Domain.Service;
 using RideAway.Domain.Value_Object;
-using RideAlias = RideAway.Domain.Entities.Ride;
+
 
 namespace RideAway.Tests.Application.Features.Rides.Commands
 {

@@ -3,11 +3,10 @@ using RideAway.Application.Features.Rides.Commands;
 using RideAway.Application.IRepositories;
 using RideAway.Application.IServices;
 using RideAway.Domain.Service;
-using RideAlias = RideAway.Domain.Entities.Ride;
 
 namespace RideAway.Application.Features.Rides.Handlers.Commands
 {
-    public class RequestRideHandler : IRequestHandler<RequestRideCommand, RideAlias>
+    public class RequestRideHandler : IRequestHandler<RequestRideCommand, RideAway.Domain.Entities.Ride>
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IGeoCodingService _geocodingService;

@@ -20,8 +20,6 @@ namespace RideAway.Infrastructure.DependencyInjection
     {
         public static void AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
         {
-            
-
             services.AddHttpClient<IGoogleMapsApi, GoogleMapsApiService>();
 
             services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
@@ -31,13 +29,9 @@ namespace RideAway.Infrastructure.DependencyInjection
             services.AddScoped<ILocationService, GoogleMapsLocationService>();
             services.AddScoped<IGeoCodingService, GoogleGeocodingService>();
 
-            // Repository Area
-
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IRideRepository, RideRepository>();
             services.AddScoped<IPaymentRepository, PaymentRepository>();
-
-            // Service Area
 
             services.AddScoped<IUnitOfWork, UnitOfWork>();
             services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
@@ -46,19 +40,12 @@ namespace RideAway.Infrastructure.DependencyInjection
             services.AddScoped<IFareCalculationService, FareCalculationService>();
             services.AddScoped<IRideFactory, RideFactory>();
 
-            //Mapper Area
             services.AddAutoMapper(typeof(PaymentProfile));
             services.AddAutoMapper(typeof(UserProfile));
 
             services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(GetAvailableRidesHandler).Assembly));
 
-
-            //behavior
             services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
-
-
-
-
         }
     }
 }

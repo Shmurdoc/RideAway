@@ -5,7 +5,7 @@ using RideAway.Domain.Entities.Enum;
 using RideAway.Domain.Value_Object;
 using System;
 using System.Collections.Generic;
-using RideAlias = RideAway.Domain.Entities.Ride;
+
 
 namespace RideAway.Tests.Moq.Factories
 {
