@@ -1,42 +1,45 @@
-🚗 RideAway - Project Overview
-RideAway is a modern, scalable ride-hailing platform backend—designed and built by a passionate graduate developer who thrives on clean architecture and maintainable code. This ongoing project harnesses the power of ASP.NET Core (.NET 6) to deliver a robust API layer that supports key ride-hailing functionalities such as fare estimation, ride management, and real-time tracking.
+# RideAway
 
-🧠 Key Features & Architecture
-💡 Clean & Scalable Design
-This solution is grounded in Clean Architecture (Onion Architecture), emphasizing modularity, separation of concerns, and testability. Core components include:
+Ride-hailing API platform built on .NET 6 with Clean Architecture.
 
-Controllers: Handle HTTP requests/responses, kept thin by delegating logic to service layers.
+## Project Structure
 
-Services & Interfaces: Encapsulate business logic with clear service contracts, adhering to SOLID principles.
+```
+RideAway.Domain/          -- Entities, value objects, enums, exceptions, domain services
+RideAway.Application/     -- Use cases (CQRS commands/queries/handlers), DTOs, repository interfaces, service interfaces
+RideAway.Infrastructure/  -- Persistence (EF Core), external services (Google Maps, Stripe), authentication, notifications
+RideAway.API/             -- ASP.NET Core controllers, middleware, DI composition root
+RideAway.Tests/           -- Unit tests (xUnit + Moq + FluentAssertions)
+IntegrationTest/          -- Integration tests (xUnit)
+ArchitectureTest/         -- ArchUnit tests for layer boundary enforcement
+```
 
-Domain Models & DTOs: Ensure clean separation between internal business logic and API-facing data contracts.
+## Tech Stack
 
-Dependency Injection: Used throughout the project for flexibility and easy testing.
+- .NET 6, ASP.NET Core, EF Core 6, SQL Server
+- MediatR (CQRS), AutoMapper, FluentValidation
+- xUnit, Moq, FluentAssertions, Bogus, NetArchTest
+- Stripe, Google Maps API, JWT
 
-📊 FareController Explained
-The FareController is a RESTful API controller marked with [ApiController] and [Route("api/[controller]")], ensuring adherence to ASP.NET Core's routing and validation conventions.
+## Getting Started
 
-Constructor Injection: It receives IFareCalculationService and IRideMatchingService through DI for better modularity and test coverage.
+1. Clone the repo
+2. Set connection string in `appsettings.Development.json`
+3. Run EF migrations: `dotnet ef database update --project RideAway.API`
+4. Run: `dotnet run --project RideAway.API`
 
-Estimate Fare Endpoint: Although currently commented out, this endpoint is designed to accept a FareEstimationDTO via POST. It calculates the fare using the injected service, based on pickup location, destination, estimated distance, and time.
+## Build & Test
 
-Service Abstraction: The use of interfaces enables loose coupling, making the application easier to maintain, test, and extend.
+```bash
+dotnet build RideAway.sln
+dotnet test RideAway.sln
+```
 
-🧱 Technical Highlights
-✅ .NET 6 with ASP.NET Core Web API
+## Architecture
 
-🔌 Layered architecture for separation of concerns
+Clean Architecture (onion) with CQRS via MediatR:
 
-🧪 Test-friendly with full interface-driven design
-
-🧠 Domain-driven development using value objects and rich domain models
-
-🔄 Ongoing enhancements with room for future features and scale
-
-🛠️ For Contributors & Testers
-If you're testing or contributing:
-
-⚠️ Remember to add your own API keys or configuration for testing. Make sure to remove or secure any sensitive data before committing your changes to version control.
-
-🙌 Personal Note
-As a developer early in my career, this project reflects both my curiosity and commitment to writing clean, professional-grade code. It's an evolving platform that grows with every feature, refactor, and lesson learned. I hope you find the architecture inspiring and the codebase helpful—whether you're here to contribute, learn, or build something amazing on top of it.
+- **API layer** owns composition (DI registration lives in Infrastructure, called from API Program.cs)
+- **Application layer** defines interfaces, handles commands/queries, contains zero DI registration
+- **Infrastructure layer** implements persistence, external service clients, and DI wiring
+- **Domain layer** has no external dependencies
