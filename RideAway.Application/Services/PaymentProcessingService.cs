@@ -4,6 +4,7 @@ using RideAway.Application.DTOs;
 using RideAway.Application.IRepositories;
 using RideAway.Application.IServices;
 using RideAway.Domain.Entities;
+using RideAway.Domain.Exceptions;
 using RideAway.Domain.Entities.Enum;
 using RideAway.Domain.Value_Object;
 
@@ -35,7 +36,7 @@ namespace RideAway.Application.Services
             if (payment == null)
             {
                 _logger.LogWarning("Payment not found for ID: {PaymentId}", paymentId);
-                throw new Exception("Payment not found.");
+                throw new PaymentProcessingException("Payment not found.");
             }
 
             if (payment.Status == PaymentStatus.Completed)

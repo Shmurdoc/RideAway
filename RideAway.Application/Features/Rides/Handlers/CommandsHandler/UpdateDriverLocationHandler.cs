@@ -2,6 +2,7 @@
 using RideAway.Application.Features.Rides.Commands;
 using RideAway.Application.IRepositories;
 using RideAway.Domain.Entities;
+using RideAway.Domain.Exceptions;
 
 namespace RideAway.Application.Features.Rides.Handlers.Commands
 {
@@ -19,7 +20,7 @@ namespace RideAway.Application.Features.Rides.Handlers.Commands
             var driver = await _unitOfWork.UserRepository.GetByIdAsync(request.driverLocationUpdateDTO.Id);
 
             if (driver == null)
-                throw new Exception("Driver not found.");
+                throw new KeyNotFoundException("Driver not found.");
 
             // CurrentLocation as a
             driver.CurrentLocation = request.driverLocationUpdateDTO.CurrentLocation;

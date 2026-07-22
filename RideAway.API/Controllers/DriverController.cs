@@ -1,10 +1,7 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using RideAway.Application.Features.Payments.Commands;
 using RideAway.Application.Features.Rides.Commands;
-using RideAway.Domain.Exceptions;
-
 
 namespace RideAway.API.Controllers;
 
@@ -13,36 +10,22 @@ namespace RideAway.API.Controllers;
 public class DriverController : ControllerBase
 {
     private readonly IMediator _mediator;
-    private readonly ILogger<DriverController> _logger;
 
-    public DriverController(IMediator mediator, ILogger<DriverController> logger)
+    public DriverController(IMediator mediator)
     {
         _mediator = mediator;
-        _logger = logger;
     }
-    // Update Driver Location 
+
     [HttpPost("update-location")]
     public async Task<IActionResult> UpdateLocation([FromBody] UpdateDriverLocationCommand command)
     {
-        try
-        {
-            var result = await _mediator.Send(command);
+        var result = await _mediator.Send(command);
 
-            if (result)
-            {
-                return Ok(new { Success = true, Message = "Location updated." });
-            }
-
-            return BadRequest(new { Success = false, Message = "Failed to update location." });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { Success = false, Message = $"An error occurred: {ex.Message}" });
-        }
+        return result
+            ? Ok(new { Success = true, Message = "Location updated." })
+            : BadRequest(new { Success = false, Message = "Failed to update location." });
     }
 
-
-    // Collect Rider
     [HttpPost("collect-rider")]
     public async Task<IActionResult> CollectRider([FromBody] CollectRiderCommand command)
     {
@@ -68,67 +51,25 @@ public class DriverController : ControllerBase
     public async Task<IActionResult> AcceptRide([FromBody] AcceptRideCommand command)
     {
         if (command == null)
-        {
-            _logger.LogWarning("Invalid AcceptRide request.");
             return BadRequest(new { Message = "Invalid request. Command cannot be null." });
-        }
 
-        try
-        {
-            var result = await _mediator.Send(command);
+        var result = await _mediator.Send(command);
 
-            if (result)
-            {
-                return Ok(new { Message = "Ride accepted successfully." });
-            }
-
-            return BadRequest(new { Message = "Failed to accept the ride." });
-        }
-        catch (RideNotFoundException)
-        {
-            return NotFound(new { Message = "Ride not found." });
-        }
-        catch (InvalidRideStatusException)
-        {
-            return BadRequest(new { Message = "Ride has already been accepted or is not available." });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Unexpected error accepting ride.");
-            return StatusCode(500, new { Message = "An unexpected error occurred." });
-        }
+        return result
+            ? Ok(new { Message = "Ride accepted successfully." })
+            : BadRequest(new { Message = "Failed to accept the ride." });
     }
 
     [HttpPost("cancel")]
     public async Task<IActionResult> CancelRide([FromBody] CancelRideCommand command)
     {
         if (command == null)
-        {
-            _logger.LogWarning("Invalid CancelRide request.");
             return BadRequest(new { Message = "Invalid request. Command cannot be null." });
-        }
 
-        try
-        {
-            var result = await _mediator.Send(command);
+        var result = await _mediator.Send(command);
 
-            return result
-                ? Ok(new { Message = "Ride canceled successfully." })
-                : BadRequest(new { Message = "Failed to cancel ride." });
-        }
-        catch (RideNotFoundException)
-        {
-            return NotFound(new { Message = "Ride not found." });
-        }
-        catch (InvalidRideStatusException)
-        {
-            return BadRequest(new { Message = "Ride has already been completed and cannot be canceled." });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Unexpected error canceling ride.");
-            return StatusCode(500, new { Message = "An unexpected error occurred." });
-        }
+        return result
+            ? Ok(new { Message = "Ride canceled successfully." })
+            : BadRequest(new { Message = "Failed to cancel ride." });
     }
-
 }

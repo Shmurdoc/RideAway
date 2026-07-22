@@ -5,6 +5,7 @@ using RideAway.Application.Features.Rides.Commands;
 using RideAway.Application.Features.Rides.Handlers.Commands;
 using RideAway.Application.IRepositories;
 using RideAway.Domain.Entities;
+using RideAway.Domain.Exceptions;
 using RideAway.Domain.Value_Object;
 using RideAway.Tests.Moq.Mocks;
 using RideAway.Tests.Moq.Factories;
@@ -90,7 +91,7 @@ public class CompleteRideHandlerTests
 
         // Assert
         await act.Should()
-                 .ThrowAsync<Exception>()
+                 .ThrowAsync<RideNotFoundException>()
                  .WithMessage("Ride not found.");
     }
 
@@ -115,6 +116,6 @@ public class CompleteRideHandlerTests
         Func<Task> act = async () => await handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await act.Should().ThrowAsync<Exception>().WithMessage("Ride cannot be completed.");
+        await act.Should().ThrowAsync<InvalidRideStatusException>().WithMessage("Ride cannot be completed.");
     }
 }

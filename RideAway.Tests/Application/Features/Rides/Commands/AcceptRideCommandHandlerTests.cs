@@ -4,6 +4,7 @@ using RideAway.Application.Features.Rides.Commands;
 using RideAway.Domain.Entities;
 using Microsoft.Extensions.Logging;
 using RideAway.Tests.Moq;
+using RideAway.Domain.Exceptions;
 using RideAway.Domain.Value_Object;
 using RideAway.Application.Features.Rides.Handlers.Commands;
 using RideAway.Tests.Moq.Mocks;
@@ -67,7 +68,7 @@ namespace RideAway.Tests.Application.Features.Rides.Commands
             Func<Task> act = async () => await handler.Handle(command, CancellationToken.None);
 
             // Assert
-            await act.Should().ThrowAsync<Exception>()
+            await act.Should().ThrowAsync<RideNotFoundException>()
                 .WithMessage("Ride not found.");
 
             _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Never);
@@ -93,7 +94,7 @@ namespace RideAway.Tests.Application.Features.Rides.Commands
             Func<Task> act = async () => await handler.Handle(command, CancellationToken.None);
 
             // Assert
-            await act.Should().ThrowAsync<Exception>()
+            await act.Should().ThrowAsync<InvalidRideStatusException>()
                 .WithMessage("Ride has already been accepted or is not available.");
 
             _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Never);

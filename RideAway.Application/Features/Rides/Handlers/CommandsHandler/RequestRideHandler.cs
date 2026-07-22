@@ -2,6 +2,7 @@
 using RideAway.Application.Features.Rides.Commands;
 using RideAway.Application.IRepositories;
 using RideAway.Application.IServices;
+using RideAway.Domain.Exceptions;
 using RideAway.Domain.Service;
 
 namespace RideAway.Application.Features.Rides.Handlers.Commands
@@ -27,7 +28,7 @@ namespace RideAway.Application.Features.Rides.Handlers.Commands
 
             if (nearestDriver == Guid.Empty)
             {
-                throw new Exception("No available drivers at the moment.");
+                throw new InvalidOperationException("No available drivers at the moment.");
             }
 
             // If Pickup & Destination is a String Address Convert to Location 

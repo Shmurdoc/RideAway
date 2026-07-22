@@ -3,12 +3,8 @@ using Microsoft.Extensions.Logging;
 using RideAway.Application.Features.Rides.Commands;
 using RideAway.Application.IRepositories;
 using RideAway.Domain.Entities.Enum;
+using RideAway.Domain.Exceptions;
 using RideAway.Domain.Value_Object;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace RideAway.Application.Features.Rides.Handlers.Commands
 {
@@ -31,13 +27,13 @@ namespace RideAway.Application.Features.Rides.Handlers.Commands
             if (ride == null)
             {
                 _logger.LogWarning("Ride not found. RideId: {RideId}", request.RideId);
-                throw new Exception("Ride not found.");
+                throw new RideNotFoundException("Ride not found.");
             }
 
             if (ride.Status != RideStatus.InProgress)
             {
                 _logger.LogWarning("Ride is not in progress. RideId: {RideId}, CurrentStatus: {Status}", request.RideId, ride.Status);
-                throw new Exception("Ride cannot be completed.");
+                throw new InvalidRideStatusException("Ride cannot be completed.");
             }
 
             ride.Status = RideStatus.Completed;

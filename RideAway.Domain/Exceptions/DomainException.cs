@@ -6,7 +6,8 @@ using System.Threading.Tasks;
 
 namespace RideAway.Domain.Exceptions
 {
-    internal class DomainException
+    public class DomainException : Exception
     {
+        public DomainException(string message) : base(message) { }
     }
 }

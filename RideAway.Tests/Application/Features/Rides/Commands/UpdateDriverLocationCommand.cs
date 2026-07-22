@@ -73,6 +73,6 @@ public class UpdateDriverLocationHandlerTests
         Func<Task> act = async () => await handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await act.Should().ThrowAsync<Exception>().WithMessage("Driver not found.");
+        await act.Should().ThrowAsync<KeyNotFoundException>().WithMessage("Driver not found.");
     }
 }

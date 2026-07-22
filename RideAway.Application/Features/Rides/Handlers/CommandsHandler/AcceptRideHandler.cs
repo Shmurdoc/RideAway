@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using RideAway.Application.Features.Rides.Commands;
 using RideAway.Application.IRepositories;
 using RideAway.Domain.Value_Object;
+using RideAway.Domain.Exceptions;
 
 namespace RideAway.Application.Features.Rides.Handlers.Commands
 {
@@ -25,13 +26,13 @@ namespace RideAway.Application.Features.Rides.Handlers.Commands
             if (ride == null)
             {
                 _logger.LogWarning("Ride not found. RideId: {RideId}", request.RideId);
-                throw new Exception("Ride not found.");
+                throw new RideNotFoundException("Ride not found.");
             }
 
             if (ride.Status != RideStatus.Requested)
             {
                 _logger.LogWarning("Ride is not in a requested state. RideId: {RideId}, CurrentStatus: {Status}", request.RideId, ride.Status);
-                throw new Exception("Ride has already been accepted or is not available.");
+                throw new InvalidRideStatusException("Ride has already been accepted or is not available.");
             }
 
             ride.DriverId = request.DriverId;

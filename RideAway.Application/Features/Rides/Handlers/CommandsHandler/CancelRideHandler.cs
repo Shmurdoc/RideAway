@@ -3,10 +3,8 @@ using Microsoft.Extensions.Logging;
 using RideAway.Application.Features.Rides.Commands;
 using RideAway.Application.IRepositories;
 using RideAway.Domain.Entities.Enum;
+using RideAway.Domain.Exceptions;
 using RideAway.Domain.Value_Object;
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace RideAway.Application.Features.Rides.Handlers.Commands
 {
@@ -30,13 +28,13 @@ namespace RideAway.Application.Features.Rides.Handlers.Commands
             if (ride == null)
             {
                 _logger.LogWarning("Ride not found. RideId: {RideId}", request.RideId);
-                throw new Exception("Ride cannot be canceled.");
+                throw new RideNotFoundException("Ride not found.");
             }
 
             if (ride.Status == RideStatus.Completed)
             {
                 _logger.LogWarning("Cannot cancel a completed ride. RideId: {RideId}", request.RideId);
-                throw new Exception("Ride cannot be canceled.");
+                throw new InvalidRideStatusException("Ride is already completed and cannot be canceled.");
             }
 
             ride.Status = RideStatus.Canceled;

@@ -20,12 +20,11 @@ namespace RideAway.Tests.API.Controllers;
 public class UserControllerTests
 {
     private readonly Mock<IMediator> _mediatorMock = new();
-    private readonly Mock<ILogger<UserController>> _loggerMock = new();
     private readonly UserController _controller;
 
     public UserControllerTests()
     {
-        _controller = new UserController(_mediatorMock.Object, _loggerMock.Object);
+        _controller = new UserController(_mediatorMock.Object);
     }
 
     [Fact]
@@ -115,18 +114,8 @@ public class UserControllerTests
         _mediatorMock.Setup(m => m.Send(It.IsAny<CancelRideCommand>(), default))
             .ThrowsAsync(new RideNotFoundException("Ride not found."));
 
-        // Act
-        var result = await _controller.CancelRide(command);
-
-        // Assert
-        var notFoundResult = result.Should().BeOfType<NotFoundObjectResult>().Subject;
-
-        // Deserialize anonymous object to Dictionary
-        var json = System.Text.Json.JsonSerializer.Serialize(notFoundResult.Value);
-        var response = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(json);
-
-        response.Should().ContainKey("Message");
-        response!["Message"].Should().Be("Ride not found.");
+        // Act & Assert
+        await Assert.ThrowsAsync<RideNotFoundException>(() => _controller.CancelRide(command));
     }
 
 
@@ -142,19 +131,8 @@ public class UserControllerTests
         _mediatorMock.Setup(m => m.Send(It.IsAny<CancelRideCommand>(), default))
             .ThrowsAsync(new InvalidRideStatusException("Ride has already been completed and cannot be canceled."));
 
-        // Act
-        var result = await _controller.CancelRide(command);
-
-        // Assert
-        var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
-
-        // Safely convert the anonymous object to a known type
-        var json = System.Text.Json.JsonSerializer.Serialize(badRequestResult.Value);
-        var response = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(json);
-
-        Assert.NotNull(response);
-        Assert.True(response!.ContainsKey("Message"));
-        Assert.Equal("Ride has already been completed and cannot be canceled.", response["Message"]);
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidRideStatusException>(() => _controller.CancelRide(command));
     }
 
 

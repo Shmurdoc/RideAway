@@ -5,6 +5,7 @@ using RideAway.Application.Features.Rides.Commands;
 using RideAway.Application.Features.Rides.Handlers.Commands;
 using RideAway.Application.IRepositories;
 using RideAway.Domain.Entities;
+using RideAway.Domain.Exceptions;
 using RideAway.Domain.Service;
 using RideAway.Domain.Value_Object;
 
@@ -80,7 +81,7 @@ namespace RideAway.Tests.Application.Features.Rides.Commands
             Func<Task> act = async () => await handler.Handle(command, CancellationToken.None);
 
             // Assert
-            await act.Should().ThrowAsync<Exception>().WithMessage("Ride cannot be canceled.");
+            await act.Should().ThrowAsync<RideNotFoundException>().WithMessage("Ride not found.");
 
             // Verify warning log
             _mockLogger.Verify(
@@ -115,7 +116,7 @@ namespace RideAway.Tests.Application.Features.Rides.Commands
             Func<Task> act = async () => await handler.Handle(command, CancellationToken.None);
 
             // Assert
-            await act.Should().ThrowAsync<Exception>().WithMessage("Ride cannot be canceled.");
+            await act.Should().ThrowAsync<InvalidRideStatusException>().WithMessage("Ride is already completed and cannot be canceled.");
 
             _mockLogger.Verify(
                 x => x.Log(

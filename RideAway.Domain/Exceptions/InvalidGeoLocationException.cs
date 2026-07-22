@@ -6,7 +6,8 @@ using System.Threading.Tasks;
 
 namespace RideAway.Domain.Exceptions
 {
-    internal class InvalidGeoLocationException
+    public class InvalidGeoLocationException : Exception
     {
+        public InvalidGeoLocationException(string message) : base(message) { }
     }
 }

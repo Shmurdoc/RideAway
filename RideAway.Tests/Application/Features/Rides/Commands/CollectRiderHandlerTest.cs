@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using RideAway.Application.IRepositories;
 using RideAway.Application.IServices;
 using RideAway.Domain.Entities;
+using RideAway.Domain.Exceptions;
 using RideAway.Domain.Value_Object;
 using RideAway.Tests.Moq.Factories;
 using RideAway.Application.Features.Rides.Commands;
@@ -88,7 +89,7 @@ public class CollectRiderHandlerTests
         Func<Task> act = async () => await handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await act.Should().ThrowAsync<Exception>()
+        await act.Should().ThrowAsync<RideNotFoundException>()
                  .WithMessage("Ride not found or driver is not assigned to this ride.");
     }
 }

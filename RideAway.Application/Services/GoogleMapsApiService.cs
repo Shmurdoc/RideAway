@@ -30,7 +30,7 @@ namespace RideAway.Application.Services
             HttpResponseMessage response = await _httpClient.GetAsync(url);
             if (!response.IsSuccessStatusCode)
             {
-                throw new Exception("Failed to retrieve distance from Google Maps API.");
+                throw new InvalidOperationException("Failed to retrieve distance from Google Maps API.");
             }
 
             string responseBody = await response.Content.ReadAsStringAsync();
@@ -57,7 +57,7 @@ namespace RideAway.Application.Services
             var route = json["routes"]?.FirstOrDefault()?["overview_polyline"]?["points"]?.ToString();
 
             if (string.IsNullOrEmpty(route))
-                throw new Exception("Failed to get route from Google Maps.");
+                throw new InvalidOperationException("Failed to get route from Google Maps.");
 
             return route; 
         }

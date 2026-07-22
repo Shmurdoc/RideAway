@@ -115,7 +115,7 @@ public class RequestRideHandlerTests
         Func<Task> act = async () => await handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await act.Should().ThrowAsync<Exception>()
+        await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("No available drivers at the moment.");
     }
 }
