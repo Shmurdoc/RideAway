@@ -26,7 +26,7 @@ namespace RideAway.Application.Services
             _unitOfWork = unitOfWork;
             _stripeService = stripeService;
             _logger = logger;
-            _currency = configuration["StripeSettings:Currency"] ?? "ZAR";
+            _currency = configuration["Stripe:Currency"] ?? "ZAR";
         }
 
         public async Task<bool> ProcessPayment(Guid paymentId)
