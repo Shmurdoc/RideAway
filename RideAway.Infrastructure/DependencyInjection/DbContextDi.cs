@@ -13,7 +13,7 @@ namespace RideAway.Infrastructure.DependencyInjection
 {
     public static class DbContextDi
     {
-        public static IServiceCollection ImplimentPersistence(this
+        public static IServiceCollection ImplementPersistence(this
             IServiceCollection services, IConfiguration configuration)
         {
             services.AddDbContext<ApplicationDbContext>(options =>

@@ -2,16 +2,12 @@ using RideAway.Infrastructure.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-//Impliment Infrastructure DependanceInjection Container
-builder.Services.ImplimentPersistence(builder.Configuration);
+builder.Services.ImplementPersistence(builder.Configuration);
 
 var app = builder.Build();
 

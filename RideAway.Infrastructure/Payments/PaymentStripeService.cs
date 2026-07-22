@@ -3,7 +3,7 @@ using RideAway.Application.IServices;
 using Stripe;
 using Stripe.Checkout;
 
-namespace RideAway.Infrastructure.Persistence.Repositories
+namespace RideAway.Infrastructure.Payments
 {
     public class StripePaymentService : IStripePaymentService
     {
@@ -11,6 +11,7 @@ namespace RideAway.Infrastructure.Persistence.Repositories
 
         public StripePaymentService(IConfiguration config)
         {
+            _config = config;
             StripeConfiguration.ApiKey = _config["Stripe:SecretKey"];
         }
 

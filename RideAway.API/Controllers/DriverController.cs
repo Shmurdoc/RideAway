@@ -2,7 +2,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using RideAway.Application.Features.Payments.Commands;
-using RideAway.Application.Features.Ride.Commands;
 using RideAway.Application.Features.Rides.Commands;
 using RideAway.Domain.Exceptions;
 
