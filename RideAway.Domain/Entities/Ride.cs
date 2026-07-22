@@ -8,10 +8,10 @@ namespace RideAway.Domain.Entities
     {
         public Guid RiderId { get; set; }
         public User Rider { get; set; } = null!;
-        public Guid DriverId { get; set; }
+        public Guid? DriverId { get; set; }
         public User? Driver { get; set; }
-        public string? PickupLocation { get; set; } = null!;
-        public string? Destination { get; set; } = null!;
+        public string PickupLocation { get; set; } = null!;
+        public string Destination { get; set; } = null!;
         public decimal Fare { get; set; }
         public RideCategory RiderCategory { get; set; }
         public RideStatus Status { get; set; } = RideStatus.Requested;
@@ -33,7 +33,7 @@ namespace RideAway.Domain.Entities
 
         public void MarkAsPaid()
         {
-            this.Status = RideStatus.Completed;
+            Status = RideStatus.Completed;
         }
     }
 

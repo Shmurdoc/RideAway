@@ -100,7 +100,7 @@ namespace RideAway.Tests.Application.Features.Rides.Queries
     {
         new()
         {
-            DriverId = singleRide!.DriverId!,
+            DriverId = singleRide.DriverId!.Value,
             PickupLocation = singleRide.PickupLocation,
             Destination = singleRide.Destination,
             EstimatedFare = singleRide.Fare
@@ -126,7 +126,7 @@ namespace RideAway.Tests.Application.Features.Rides.Queries
             // Assert
             result.Should().NotBeNull();
             result.Should().ContainSingle();
-            result[0].DriverId.Should().Be(singleRide.DriverId);
+            result[0].DriverId.Should().Be(singleRide.DriverId!.Value);
         }
 
 
