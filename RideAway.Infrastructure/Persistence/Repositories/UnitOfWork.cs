@@ -10,12 +10,15 @@ namespace RideAway.Infrastructure.Persistence.Repositories
         public IPaymentRepository PaymentRepository { get; }
         public IUserRepository UserRepository { get; }
 
-        public UnitOfWork(ApplicationDbContext context)
+        public UnitOfWork(ApplicationDbContext context,
+            IRideRepository rideRepository,
+            IPaymentRepository paymentRepository,
+            IUserRepository userRepository)
         {
             _context = context;
-            RideRepository = new RideRepository(context);
-            PaymentRepository = new PaymentRepository(context);
-            UserRepository = new UserRepository(context);
+            RideRepository = rideRepository;
+            PaymentRepository = paymentRepository;
+            UserRepository = userRepository;
         }
 
         public async Task<int> SaveChangesAsync()

@@ -2,22 +2,18 @@
 {
     using Microsoft.EntityFrameworkCore;
     using RideAway.Application.IRepositories;
-    using System.Collections.Generic;
     using System.Linq.Expressions;
 
     public class GenericRepository<T> : IGenericRepository<T> where T : class
     {
         protected readonly ApplicationDbContext _db;
         private readonly DbSet<T> _dbSet;
-        internal DbSet<T> dbSet;
 
         public GenericRepository(ApplicationDbContext db)
         {
             _db = db;
             _dbSet = _db.Set<T>();
-
         }
-
 
         public async Task AddAsync(T entity)
         {
@@ -26,7 +22,6 @@
 
         public async Task<T?> Get(Expression<Func<T, bool>> filter, string? includeProperties = null, bool tracked = false)
         {
-
             IQueryable<T> query;
             if (tracked)
             {
@@ -76,8 +71,6 @@
             return await _dbSet.OfType<TType>().ToListAsync();
         }
 
-        
-
         public async Task<T?> GetByIdAsync(Guid id)
         {
             return await _db.Set<T>().FindAsync(id);
@@ -91,13 +84,11 @@
         public async Task RemoveAsync(T entity)
         {
             _db.Set<T>().Remove(entity);
-            await _db.SaveChangesAsync();
         }
+
         public async Task RemoveRange(IEnumerable<T> entities)
         {
-            dbSet.RemoveRange(entities);
-            await _db.SaveChangesAsync();
+            _dbSet.RemoveRange(entities);
         }
     }
-
 }
