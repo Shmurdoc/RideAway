@@ -1,9 +1,12 @@
-﻿using System.Text;
+﻿using System.Net;
+using System.Text;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+using Polly;
+using Polly.Extensions.Http;
 using RideAway.Application.Common.Behaviors;
 using RideAway.Application.Features.Rides.Handlers.Queries;
 using RideAway.Application.IRepositories;
@@ -24,8 +27,12 @@ namespace RideAway.Infrastructure.DependencyInjection
     {
         public static void AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
         {
-            services.AddHttpClient<IGoogleMapsApi, GoogleMapsApiService>();
-            services.AddHttpClient<IGeoCodingService, GoogleGeocodingService>();
+            services.AddHttpClient<IGoogleMapsApi, GoogleMapsApiService>()
+                .AddPolicyHandler(GetRetryPolicy())
+                .AddPolicyHandler(Policy.TimeoutAsync<HttpResponseMessage>(30));
+            services.AddHttpClient<IGeoCodingService, GoogleGeocodingService>()
+                .AddPolicyHandler(GetRetryPolicy())
+                .AddPolicyHandler(Policy.TimeoutAsync<HttpResponseMessage>(30));
 
             services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
             services.AddScoped<IEmailService, EmailService>();
@@ -52,34 +59,55 @@ namespace RideAway.Infrastructure.DependencyInjection
             services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
 
             var jwtKey = configuration["Jwt:Key"];
-            if (!string.IsNullOrEmpty(jwtKey))
+            if (string.IsNullOrEmpty(jwtKey))
             {
-                services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-                    .AddJwtBearer(options =>
-                    {
-                        options.TokenValidationParameters = new TokenValidationParameters
-                        {
-                            ValidateIssuer = true,
-                            ValidateAudience = false,
-                            ValidateLifetime = true,
-                            ValidateIssuerSigningKey = true,
-                            ValidIssuer = configuration["Jwt:Issuer"],
-                            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
-                            RoleClaimType = "role"
-                        };
-                    });
+                throw new InvalidOperationException(
+                    "JWT authentication is not configured: set the 'Jwt:Key' setting (a minimum of 32 characters is recommended).");
             }
+
+            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddJwtBearer(options =>
+                {
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidateAudience = false,
+                        ValidateLifetime = true,
+                        ValidateIssuerSigningKey = true,
+                        ValidIssuer = configuration["Jwt:Issuer"],
+                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+                        RoleClaimType = "role"
+                    };
+                });
 
             services.AddAuthorization();
             services.AddCors(options =>
             {
+                var allowedOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
                 options.AddDefaultPolicy(policy =>
                 {
-                    policy.AllowAnyOrigin()
-                          .AllowAnyMethod()
-                          .AllowAnyHeader();
+                    if (allowedOrigins is { Length: > 0 })
+                    {
+                        policy.WithOrigins(allowedOrigins)
+                              .AllowAnyMethod()
+                              .AllowAnyHeader();
+                    }
+                    else
+                    {
+                        policy.AllowAnyOrigin()
+                              .AllowAnyMethod()
+                              .AllowAnyHeader();
+                    }
                 });
             });
+        }
+
+        private static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
+        {
+            return HttpPolicyExtensions
+                .HandleTransientHttpError()
+                .OrResult(response => response.StatusCode == HttpStatusCode.TooManyRequests)
+                .WaitAndRetryAsync(3, attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt)));
         }
     }
 }

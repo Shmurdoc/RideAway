@@ -19,6 +19,13 @@ namespace RideAway.Infrastructure.Authentication
 
         public string GenerateToken(User user)
         {
+            var jwtKey = _config["Jwt:Key"];
+            if (string.IsNullOrEmpty(jwtKey))
+            {
+                throw new InvalidOperationException(
+                    "JWT token generation is not configured: set the 'Jwt:Key' setting.");
+            }
+
             var claims = new[]
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
@@ -26,7 +33,7 @@ namespace RideAway.Infrastructure.Authentication
                 new Claim("role", user.Role.ToString())
             };
 
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var token = new JwtSecurityToken(

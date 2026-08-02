@@ -1,8 +1,12 @@
 using System.Reflection;
+using Microsoft.EntityFrameworkCore;
 using RideAway.API.Middleware;
 using RideAway.Infrastructure.DependencyInjection;
+using RideAway.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
+
+ValidateConfiguration(builder.Configuration, builder.Environment);
 
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddControllers();
@@ -16,6 +20,7 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 builder.Services.ImplementPersistence(builder.Configuration);
+builder.Services.AddHealthChecks().AddDbContextCheck<ApplicationDbContext>();
 
 var app = builder.Build();
 
@@ -34,5 +39,27 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHealthChecks("/health");
 
 app.Run();
+
+static void ValidateConfiguration(IConfiguration configuration, IHostEnvironment environment)
+{
+    var missing = new List<string>();
+
+    if (string.IsNullOrWhiteSpace(configuration.GetConnectionString("DefaultConnection")))
+        missing.Add("ConnectionStrings:DefaultConnection");
+
+    if (string.IsNullOrWhiteSpace(configuration["Jwt:Key"]))
+        missing.Add("Jwt:Key");
+
+    if (string.IsNullOrWhiteSpace(configuration["Jwt:Issuer"]))
+        missing.Add("Jwt:Issuer");
+
+    if (!environment.IsDevelopment() && configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() is not { Length: > 0 })
+        missing.Add("Cors:AllowedOrigins");
+
+    if (missing.Count > 0)
+        throw new InvalidOperationException(
+            $"The application is not configured correctly. Missing required settings: {string.Join(", ", missing)}.");
+}
