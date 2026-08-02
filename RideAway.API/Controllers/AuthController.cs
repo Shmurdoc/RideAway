@@ -7,6 +7,9 @@ using RideAway.Application.IServices.IAuthentication;
 
 namespace RideAway.API.Controllers
 {
+    /// <summary>
+    /// Handles authentication for the RideAway API.
+    /// </summary>
     [Route("api/auth")]
     [ApiController]
     [AllowAnonymous]
@@ -21,6 +24,11 @@ namespace RideAway.API.Controllers
             _jwtTokenGenerator = jwtTokenGenerator;
         }
 
+        /// <summary>
+        /// Authenticates a user and returns a JWT bearer token.
+        /// </summary>
+        /// <param name="command">The login credentials.</param>
+        /// <returns>A token with the user's id, name, and role, or a 401 if the credentials are invalid.</returns>
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginCommand command)
         {

@@ -21,6 +21,11 @@ public class UserController : ControllerBase
         _mediator = mediator;
     }
 
+    /// <summary>
+    /// Creates a new user (rider or driver). Does not require authentication.
+    /// </summary>
+    /// <param name="command">The user creation payload.</param>
+    /// <returns>The created user, or 400 if the user could not be created.</returns>
     [HttpPost]
     [AllowAnonymous]
     public async Task<IActionResult> CreateUser([FromBody] CreateUserCommand command)
@@ -29,6 +34,11 @@ public class UserController : ControllerBase
         return result is not null ? Ok(result) : BadRequest("User not created");
     }
 
+    /// <summary>
+    /// Gets a user by id.
+    /// </summary>
+    /// <param name="id">The user id.</param>
+    /// <returns>The user, or 404 if no user matches the id.</returns>
     [HttpGet("{id}")]
     public async Task<IActionResult> GetUserById(Guid id)
     {
@@ -36,6 +46,13 @@ public class UserController : ControllerBase
         return user is not null ? Ok(user) : NotFound("User not found");
     }
 
+    /// <summary>
+    /// Finds available rides by matching nearby drivers within the configured radius.
+    /// </summary>
+    /// <param name="startLocation">The pickup address.</param>
+    /// <param name="endLocation">The destination address.</param>
+    /// <param name="ride">The requested ride category.</param>
+    /// <returns>A list of ride offers with estimated fares.</returns>
     [HttpGet("available-rides")]
     public async Task<IActionResult> GetAvailableRides(string? startLocation, string? endLocation, RideCategory ride)
     {
@@ -43,6 +60,11 @@ public class UserController : ControllerBase
         return Ok(rides);
     }
 
+    /// <summary>
+    /// Cancels a ride requested by the current user.
+    /// </summary>
+    /// <param name="command">The ride id to cancel.</param>
+    /// <returns>200 if the ride was canceled, 400 otherwise.</returns>
     [HttpPost("cancel")]
     public async Task<IActionResult> CancelRide([FromBody] CancelRideCommand command)
     {
@@ -56,6 +78,11 @@ public class UserController : ControllerBase
             : BadRequest(new { Message = "Failed to cancel ride." });
     }
 
+    /// <summary>
+    /// Processes a payment for a ride.
+    /// </summary>
+    /// <param name="command">The payment details.</param>
+    /// <returns>The payment result, or 400 if the payment failed.</returns>
     [HttpPost("process")]
     public async Task<IActionResult> ProcessPayment([FromBody] ProcessPaymentCommand command)
     {
@@ -69,6 +96,11 @@ public class UserController : ControllerBase
             : BadRequest(new { Message = "Payment failed.", Reason = result.FailureReason });
     }
 
+    /// <summary>
+    /// Requests a new ride.
+    /// </summary>
+    /// <param name="dto">The ride request payload.</param>
+    /// <returns>The created ride, or 400 if the request is invalid.</returns>
     [HttpPost("request")]
     public async Task<IActionResult> RequestRide([FromBody] CreateRideRequestDTO? dto)
     {

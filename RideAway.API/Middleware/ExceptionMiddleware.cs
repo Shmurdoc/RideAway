@@ -4,6 +4,10 @@ using RideAway.Domain.Exceptions;
 
 namespace RideAway.API.Middleware;
 
+/// <summary>
+/// Catches unhandled exceptions and converts them into a consistent JSON error
+/// response with an appropriate HTTP status code.
+/// </summary>
 public class ExceptionMiddleware
 {
     private readonly RequestDelegate _next;
@@ -15,6 +19,10 @@ public class ExceptionMiddleware
         _logger = logger;
     }
 
+    /// <summary>
+    /// Invokes the next middleware and handles any exception it throws.
+    /// </summary>
+    /// <param name="context">The current HTTP context.</param>
     public async Task InvokeAsync(HttpContext context)
     {
         try
