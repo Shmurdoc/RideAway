@@ -9,6 +9,6 @@ namespace RideAway.Application.IServices
 {
     public interface IGeoCodingService
     {
-        Task<Location> ConvertAddressToLocationAsync(string address);
+        Task<Location?> ConvertAddressToLocationAsync(string address);
     }
 }

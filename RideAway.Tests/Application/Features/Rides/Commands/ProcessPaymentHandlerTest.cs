@@ -95,7 +95,7 @@ public class ProcessPaymentCommandHandlerTests
 
         _unitOfWorkMock.Setup(u => u.RideRepository.GetByIdAsync(command.RideId)).ReturnsAsync(ride);
         _paymentServiceMock.Setup(p => p.ProcessPaymentAsync(command.UserId, command.Amount, command.PaymentMethod))
-                           .ReturnsAsync((PaymentResultDTO?)null);
+                           .ReturnsAsync((PaymentResultDTO)null!);
 
         var handler = new ProcessPaymentCommandHandler(_paymentServiceMock.Object, _unitOfWorkMock.Object, _loggerMock.Object);
 
@@ -118,7 +118,7 @@ public class ProcessPaymentCommandHandlerTests
             FailureReason = "Insufficient funds"
         };
 
-        _unitOfWorkMock.Setup(u => u.RideRepository.GetByIdAsync(command.RideId)).ReturnsAsync(ride);
+        _unitOfWorkMock.Setup(u => u.RideRepository.GetByIdAsync(command.RideId)).ReturnsAsync((Ride?)ride);
         _paymentServiceMock.Setup(p => p.ProcessPaymentAsync(command.UserId, command.Amount, command.PaymentMethod))
                            .ReturnsAsync(failedPaymentResult);
 

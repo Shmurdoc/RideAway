@@ -20,6 +20,12 @@ namespace RideAway.Application.Services
 
         public async Task<double> GetDistanceAsync(Location origin, Location destination)
         {
+            if (origin.Coordinates is null)
+                throw new InvalidOperationException("Origin location has no coordinates.");
+
+            if (destination.Coordinates is null)
+                throw new InvalidOperationException("Destination location has no coordinates.");
+
             return await _googleMapsApi.CalculateDistanceAsync(origin.Coordinates.Latitude, origin.Coordinates.Longitude, destination.Coordinates.Latitude, destination.Coordinates.Longitude);
         }
     }

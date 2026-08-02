@@ -15,7 +15,7 @@ namespace RideAway.Infrastructure.DependencyInjection
                     configuration.GetConnectionString("DefaultConnection"),
                     b => b.MigrationsAssembly("RideAway.API")));
 
-            services.AddScoped<IApplicationDbContext>(provider => provider.GetService<ApplicationDbContext>());
+            services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<ApplicationDbContext>());
 
             return services;
         }

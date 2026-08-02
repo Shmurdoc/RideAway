@@ -81,14 +81,16 @@
             return _db.Set<T>();
         }
 
-        public async Task RemoveAsync(T entity)
+        public Task RemoveAsync(T entity)
         {
             _db.Set<T>().Remove(entity);
+            return Task.CompletedTask;
         }
 
-        public async Task RemoveRange(IEnumerable<T> entities)
+        public Task RemoveRange(IEnumerable<T> entities)
         {
             _dbSet.RemoveRange(entities);
+            return Task.CompletedTask;
         }
     }
 }

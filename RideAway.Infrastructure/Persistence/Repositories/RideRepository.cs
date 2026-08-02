@@ -15,7 +15,7 @@ namespace RideAway.Infrastructure.Persistence.Repositories
         public Task<Ride?> UpdateAsync(Ride ride)
         {
             _context.Rides.Update(ride);
-            return Task.FromResult(ride);
+            return Task.FromResult<Ride?>(ride);
         }
 
     }

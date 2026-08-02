@@ -71,7 +71,7 @@ public class CollectRiderHandlerTests
         var driverId = Guid.NewGuid();
 
         var mockRideRepo = new Mock<IRideRepository>();
-        mockRideRepo.Setup(r => r.GetByIdAsync(rideId)).ReturnsAsync((Ride)null);
+        mockRideRepo.Setup(r => r.GetByIdAsync(rideId)).ReturnsAsync((Ride?)null);
 
         var mockUnitOfWork = new Mock<IUnitOfWork>();
         mockUnitOfWork.Setup(u => u.RideRepository).Returns(mockRideRepo.Object);

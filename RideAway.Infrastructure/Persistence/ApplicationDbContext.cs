@@ -9,10 +9,10 @@ namespace RideAway.Infrastructure.Persistence
     {
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) { }
 
-        public DbSet<User> Users { get; set; }
-        public DbSet<Ride> Rides { get; set; }
-        public DbSet<Payment> Payments { get; set; }
-        public DbSet<Vehicle> Vehicles { get; set; }
+        public DbSet<User> Users { get; set; } = null!;
+        public DbSet<Ride> Rides { get; set; } = null!;
+        public DbSet<Payment> Payments { get; set; } = null!;
+        public DbSet<Vehicle> Vehicles { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

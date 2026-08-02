@@ -55,6 +55,12 @@ namespace RideAway.Application.Features.Rides.Handlers.Commands
             var currentLocation = await _geocodingService.ConvertAddressToLocationAsync(ride.Driver.CurrentLocation);
             var pickupLocation = await _geocodingService.ConvertAddressToLocationAsync(ride.PickupLocation);
 
+            if (currentLocation is null || pickupLocation is null)
+            {
+                _logger.LogError("Could not geocode driver or pickup location for RideId: {RideId}", request.RideId);
+                throw new InvalidOperationException("Driver or pickup location could not be resolved for this ride.");
+            }
+
             var route = await _googleMapsApi.GetRouteAsync(currentLocation, pickupLocation);
             _logger.LogInformation("Driver navigation route: {Route}", route);
 

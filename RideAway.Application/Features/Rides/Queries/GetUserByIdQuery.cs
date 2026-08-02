@@ -3,5 +3,5 @@ using RideAway.Domain.Entities;
 
 namespace RideAway.Application.Features.Rides.Queries
 {
-    public record GetUserByIdQuery(Guid Id) : IRequest<User>;
+    public record GetUserByIdQuery(Guid Id) : IRequest<User?>;
 }

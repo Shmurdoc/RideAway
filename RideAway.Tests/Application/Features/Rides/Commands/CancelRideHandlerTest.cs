@@ -54,7 +54,7 @@ namespace RideAway.Tests.Application.Features.Rides.Commands
                 x => x.Log(
                     LogLevel.Information,
                     It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Ride canceled successfully")),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Ride canceled successfully")),
                     null,
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.Once);
@@ -83,7 +83,7 @@ namespace RideAway.Tests.Application.Features.Rides.Commands
                 x => x.Log(
                     LogLevel.Warning,
                     It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Ride not found")),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Ride not found")),
                     null,
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.Once);
@@ -117,7 +117,7 @@ namespace RideAway.Tests.Application.Features.Rides.Commands
                 x => x.Log(
                     LogLevel.Warning,
                     It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString().Contains("Cannot cancel a completed ride")),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Cannot cancel a completed ride")),
                     null,
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.Once);

@@ -101,7 +101,7 @@ public class UserControllerTests
         var serialized = JsonConvert.SerializeObject(okResult.Value);
         var response = JsonConvert.DeserializeObject<Dictionary<string, string>>(serialized);
 
-        Assert.Equal("Ride canceled successfully.", response["Message"]);
+        Assert.Equal("Ride canceled successfully.", response!["Message"]);
     }
 
     [Fact]

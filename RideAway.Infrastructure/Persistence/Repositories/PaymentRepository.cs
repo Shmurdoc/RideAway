@@ -13,8 +13,8 @@ namespace RideAway.Infrastructure.Persistence.Repositories
 
         public Task<Payment?> UpdateAsync(Payment payment)
         {
-            _context.Payments.Update(payment!);
-            return Task.FromResult(payment);
+            _context.Payments.Update(payment);
+            return Task.FromResult<Payment?>(payment);
         }
 
     }

@@ -29,9 +29,13 @@ namespace RideAway.Tests.Application.Services
             var destination = new Location(3.0, 4.0, "Destination Address");
             var expectedDistance = 10.5;
 
+            var originLat = origin.Coordinates!.Latitude;
+            var originLng = origin.Coordinates.Longitude;
+            var destinationLat = destination.Coordinates!.Latitude;
+            var destinationLng = destination.Coordinates.Longitude;
+
             _googleMapsApiMock.Setup(api =>
-                api.CalculateDistanceAsync(origin.Coordinates.Latitude, origin.Coordinates.Longitude,
-                                           destination.Coordinates.Latitude, destination.Coordinates.Longitude))
+                api.CalculateDistanceAsync(originLat, originLng, destinationLat, destinationLng))
                 .ReturnsAsync(expectedDistance);
 
             // Act
@@ -41,8 +45,7 @@ namespace RideAway.Tests.Application.Services
             result.Should().Be(expectedDistance);
 
             _googleMapsApiMock.Verify(api =>
-                api.CalculateDistanceAsync(origin.Coordinates.Latitude, origin.Coordinates.Longitude,
-                                           destination.Coordinates.Latitude, destination.Coordinates.Longitude),
+                api.CalculateDistanceAsync(originLat, originLng, destinationLat, destinationLng),
                 Times.Once);
         }
     }

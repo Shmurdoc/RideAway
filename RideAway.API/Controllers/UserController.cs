@@ -70,7 +70,7 @@ public class UserController : ControllerBase
     }
 
     [HttpPost("request")]
-    public async Task<IActionResult> RequestRide([FromBody] CreateRideRequestDTO dto)
+    public async Task<IActionResult> RequestRide([FromBody] CreateRideRequestDTO? dto)
     {
         if (dto == null)
             return BadRequest("Ride request cannot be null.");

@@ -83,7 +83,7 @@ namespace RideAway.Tests.Application.Features.Rides.Queries
             var unitOfWorkMock = new Mock<IUnitOfWork>();
 
             var expectedRide = await rideRepoMock.Object.GetAllAsync(null);
-            var singleRide = expectedRide.First();
+            var singleRide = expectedRide.First()!;
 
             var mockRideMatchingService = new Mock<IRideMatchingService>();
 

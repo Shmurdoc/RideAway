@@ -34,6 +34,11 @@ namespace RideAway.Application.Features.Rides.Handlers.Commands
             var pickupLocation = await _geocodingService.ConvertAddressToLocationAsync(request.CreateRideRequestDTO.PickupLocation);
             var destination = await _geocodingService.ConvertAddressToLocationAsync(request.CreateRideRequestDTO.Destination);
 
+            if (pickupLocation is null || destination is null)
+            {
+                throw new InvalidOperationException("Could not geocode the pickup or destination address.");
+            }
+
             var fare = await _rideMatchingService.CalculateFareAsync(
                 pickupLocation,
                 destination,

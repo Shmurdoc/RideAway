@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 using RideAway.Application.IServices;
 using RideAway.Domain.Entities;
@@ -6,9 +7,6 @@ using RideAway.Domain.Value_Object;
 
 namespace RideAway.Application.Services
 {
-    using Microsoft.Extensions.Logging;
-    using Newtonsoft.Json.Linq;
-
     public class GoogleGeocodingService : IGeoCodingService
     {
         private readonly HttpClient _httpClient;
@@ -36,15 +34,22 @@ namespace RideAway.Application.Services
                 var response = await _httpClient.GetStringAsync(url);
                 var json = JObject.Parse(response);
 
-                if (json["results"] == null || !json["results"].Any())
+                var results = json["results"] as JArray;
+                if (results is null || results.Count == 0)
                 {
                     _logger.LogWarning("No geocoding results for address: {Address}", address);
                     return null;
                 }
 
-                var location = json["results"][0]["geometry"]["location"];
-                double latitude = location["lat"].Value<double>();
-                double longitude = location["lng"].Value<double>();
+                var locationToken = results[0]?["geometry"]?["location"];
+                if (locationToken is null)
+                {
+                    _logger.LogWarning("No location data in geocoding response for address: {Address}", address);
+                    return null;
+                }
+
+                var latitude = locationToken["lat"]?.Value<double>() ?? 0;
+                var longitude = locationToken["lng"]?.Value<double>() ?? 0;
 
                 _logger.LogInformation("Geocoded {Address} to lat: {Lat}, lng: {Lng}", address, latitude, longitude);
 
@@ -61,9 +66,6 @@ namespace RideAway.Application.Services
                 throw;
             }
         }
-
-
-
     }
 }
 

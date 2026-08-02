@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace RideAway.Application.Features.Rides.Handlers.Queries
 {
-    public class GetUserByIdHandler : IRequestHandler<GetUserByIdQuery, User>
+    public class GetUserByIdHandler : IRequestHandler<GetUserByIdQuery, User?>
     {
         private readonly IUnitOfWork _unitOfWork;
 
@@ -19,7 +19,7 @@ namespace RideAway.Application.Features.Rides.Handlers.Queries
             _unitOfWork = unitOfWork;
         }
 
-        public async Task<User> Handle(GetUserByIdQuery request, CancellationToken cancellationToken)
+        public async Task<User?> Handle(GetUserByIdQuery request, CancellationToken cancellationToken)
         {
             return await _unitOfWork.UserRepository.GetByIdAsync(request.Id);
         }

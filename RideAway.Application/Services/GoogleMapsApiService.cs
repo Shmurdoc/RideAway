@@ -47,6 +47,12 @@ namespace RideAway.Application.Services
 
         public async Task<string> GetRouteAsync(Location origin, Location destination)
         {
+            if (origin.Coordinates is null)
+                throw new InvalidOperationException("Origin location has no coordinates.");
+
+            if (destination.Coordinates is null)
+                throw new InvalidOperationException("Destination location has no coordinates.");
+
             var originCoords = $"{origin.Coordinates.Latitude},{origin.Coordinates.Longitude}";
             var destinationCoords = $"{destination.Coordinates.Latitude},{destination.Coordinates.Longitude}";
             var url = $"https://maps.googleapis.com/maps/api/directions/json?origin={originCoords}&destination={destinationCoords}&key={_apiKey}";

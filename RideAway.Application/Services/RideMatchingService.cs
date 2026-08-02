@@ -49,11 +49,29 @@ namespace RideAway.Application.Services
             var userLocation = await _geocodingService.ConvertAddressToLocationAsync(pickupLocation);
             var destinationLocation = await _geocodingService.ConvertAddressToLocationAsync(destination);
 
+            if (userLocation is null || destinationLocation is null)
+            {
+                _logger.LogWarning("Could not geocode pickup or destination location.");
+                return new List<RideDTO>();
+            }
+
             var nearbyRides = new List<RideDTO>();
 
             foreach (var driver in drivers)
             {
-                var driverLocation = await _geocodingService.ConvertAddressToLocationAsync(driver.CurrentLocation!);
+                if (driver is null || string.IsNullOrWhiteSpace(driver.CurrentLocation))
+                {
+                    _logger.LogWarning("Skipping driver without a valid current location.");
+                    continue;
+                }
+
+                var driverLocation = await _geocodingService.ConvertAddressToLocationAsync(driver.CurrentLocation);
+                if (driverLocation is null)
+                {
+                    _logger.LogWarning("Could not geocode driver location. DriverId: {DriverId}", driver.Id);
+                    continue;
+                }
+
                 var distance = await _locationService.GetDistanceAsync(driverLocation, userLocation);
 
                 _logger.LogInformation("Driver {DriverId} is {Distance} km away from pickup.", driver.Id, distance);
