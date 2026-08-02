@@ -64,7 +64,8 @@ namespace RideAway.Infrastructure.DependencyInjection
                             ValidateLifetime = true,
                             ValidateIssuerSigningKey = true,
                             ValidIssuer = configuration["Jwt:Issuer"],
-                            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+                            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+                            RoleClaimType = "role"
                         };
                     });
             }

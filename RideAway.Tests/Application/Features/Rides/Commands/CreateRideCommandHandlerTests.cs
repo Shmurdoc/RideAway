@@ -29,7 +29,9 @@ public class CreateUserHandlerTests
         // Ensure expected values align during setup
         var command = new CreateUserCommand(new RideAway.Application.DTOs.CreateUserDTO
         {
-            Name = "John Snow", // Updated to match test assertion
+            Name = "John Snow",
+            Email = "john.snow@example.com",
+            Password = "P@ssw0rd!",
             Role = UserRole.Driver
         });
 

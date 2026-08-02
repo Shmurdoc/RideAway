@@ -1,4 +1,5 @@
 ﻿using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RideAway.Application.Features.Payments.Commands;
 using RideAway.Application.Features.Rides.Commands;
@@ -7,6 +8,7 @@ namespace RideAway.API.Controllers;
 
 [ApiController]
 [Route("api/drivers")]
+[Authorize(Roles = "Driver")]
 public class DriverController : ControllerBase
 {
     private readonly IMediator _mediator;

@@ -37,6 +37,7 @@ public class ExceptionMiddleware
             RideAlreadyCompletedException => (HttpStatusCode.BadRequest, "Ride is already completed."),
             PaymentProcessingException => (HttpStatusCode.InternalServerError, "Payment processing encountered an error."),
             InvalidGeoLocationException => (HttpStatusCode.BadRequest, ex.Message),
+            InvalidCredentialsException => (HttpStatusCode.Unauthorized, "Invalid email or password."),
             InvalidOperationException => (HttpStatusCode.BadRequest, ex.Message),
             KeyNotFoundException => (HttpStatusCode.NotFound, ex.Message),
             UnauthorizedAccessException => (HttpStatusCode.Forbidden, "You are not authorized to perform this action."),
