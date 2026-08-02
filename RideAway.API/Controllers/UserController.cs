@@ -36,7 +36,7 @@ public class UserController : ControllerBase
     [HttpGet("available-rides")]
     public async Task<IActionResult> GetAvailableRides(string? startLocation, string? endLocation, RideCategory ride)
     {
-        var rides = await _mediator.Send(new GetAvailableRidesQuery(endLocation!, startLocation!, ride));
+        var rides = await _mediator.Send(new GetAvailableRidesQuery(startLocation!, endLocation!, ride));
         return Ok(rides);
     }
 

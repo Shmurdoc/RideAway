@@ -11,8 +11,8 @@ using System.Threading.Tasks;
 namespace RideAway.Application.Features.Rides.Queries
 {
     public record GetAvailableRidesQuery(
-    string Destination,
-    string PickupLocation,
-    RideCategory RideCategory
-) : IRequest<List<RideDTO>>;
+        string PickupLocation,
+        string Destination,
+        RideCategory RideCategory
+    ) : IRequest<List<RideDTO>>;
 }

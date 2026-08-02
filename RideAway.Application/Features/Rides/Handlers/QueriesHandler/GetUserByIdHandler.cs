@@ -21,7 +21,7 @@ namespace RideAway.Application.Features.Rides.Handlers.Queries
 
         public async Task<User> Handle(GetUserByIdQuery request, CancellationToken cancellationToken)
         {
-            return await _unitOfWork.UserRepository.GetByIdAsync(request.Guid);
+            return await _unitOfWork.UserRepository.GetByIdAsync(request.Id);
         }
     }
 }

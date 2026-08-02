@@ -22,7 +22,6 @@ namespace RideAway.Application.Features.Rides.Handlers.Commands
             if (driver == null)
                 throw new KeyNotFoundException("Driver not found.");
 
-            // CurrentLocation as a
             driver.CurrentLocation = request.driverLocationUpdateDTO.CurrentLocation;
 
             await _unitOfWork.SaveChangesAsync();

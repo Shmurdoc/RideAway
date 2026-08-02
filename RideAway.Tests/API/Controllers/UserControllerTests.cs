@@ -52,7 +52,7 @@ public class UserControllerTests
     {
         var userId = Guid.NewGuid();
 
-        _mediatorMock.Setup(m => m.Send(It.Is<GetUserByIdQuery>(q => q.Guid == userId), default))
+        _mediatorMock.Setup(m => m.Send(It.Is<GetUserByIdQuery>(q => q.Id == userId), default))
                      .ReturnsAsync((User?)null);
 
         var result = await _controller.GetUserById(userId);
