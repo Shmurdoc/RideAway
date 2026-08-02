@@ -42,9 +42,8 @@ namespace RideAway.Application.Services
 
         private async Task<decimal> GetDistanceAsync(Location pickup, Location destination)
         {
-            await Task.Delay(100);
-            Random random = new();
-            return random.Next(3, 15);
+            var distanceInKm = await _locationService.GetDistanceAsync(pickup, destination);
+            return Math.Max((decimal)distanceInKm, 0.5m);
         }
 
         private decimal GetSurgeMultiplier()
