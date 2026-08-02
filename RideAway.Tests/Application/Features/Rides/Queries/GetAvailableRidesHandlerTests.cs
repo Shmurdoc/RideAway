@@ -17,8 +17,6 @@ namespace RideAway.Tests.Application.Features.Rides.Queries
     public class GetAvailableRidesHandlerTests
     {
         private readonly IMapper _mapper;
-        private readonly Mock<IUnitOfWork> _mockUnitOfWork;
-        private readonly Mock<IRideRepository> _mockRideRepository;
         private const string PickupLocation = "pickup";
         private const string DropoffLocation = "dropoff";
 
@@ -36,7 +34,7 @@ namespace RideAway.Tests.Application.Features.Rides.Queries
         public async Task Handle_ShouldReturnEmptyList_WhenNoMatchingRidesFound()
         {
             // Arrange
-            var mockUnitOfWork = new Mock<IUnitOfWork>(); // ✅ Added this
+            var mockUnitOfWork = new Mock<IUnitOfWork>();
             var mockMapper = new Mock<IMapper>();
             var mockRideMatchingService = new Mock<IRideMatchingService>();
             var mockLocationService = new Mock<ILocationService>();
@@ -75,37 +73,30 @@ namespace RideAway.Tests.Application.Features.Rides.Queries
         public async Task Handle_ShouldReturnRides_WhenMatchingRidesExist()
         {
             // Arrange
-            //Generate Ride List
             var testRides = RideFactory.GenerateRides(5);
 
             var rideRepoMock = new Mock<IRideRepository>();
             rideRepoMock.As<IGenericRepository<Ride>>().SetupAllProperties();
 
             rideRepoMock.Setup(r => r.GetAllAsync(It.IsAny<Expression<Func<Ride, bool>>>(), It.IsAny<string?>())).ReturnsAsync(testRides);
-            
 
             var unitOfWorkMock = new Mock<IUnitOfWork>();
-            //// Inject RideRepository mock
-            //unitOfWorkMock.Setup(uow => uow.RideRepository).Returns(rideRepoMock.Object);
-           
-            //// Optionally inject SaveChangesAsync behavior
-            //unitOfWorkMock.Setup(uow => uow.SaveChangesAsync()).ReturnsAsync(1);
-            
-            var expectedRide = await rideRepoMock.Object.GetAllAsync(null); // Fetch the generated ride
+
+            var expectedRide = await rideRepoMock.Object.GetAllAsync(null);
             var singleRide = expectedRide.First();
 
             var mockRideMatchingService = new Mock<IRideMatchingService>();
 
             var expectedRides = new List<RideDTO>
-    {
-        new()
-        {
-            DriverId = singleRide.DriverId!.Value,
-            PickupLocation = singleRide.PickupLocation,
-            Destination = singleRide.Destination,
-            EstimatedFare = singleRide.Fare
-        }
-    };
+            {
+                new()
+                {
+                    DriverId = singleRide.DriverId!.Value,
+                    PickupLocation = singleRide.PickupLocation,
+                    Destination = singleRide.Destination,
+                    EstimatedFare = singleRide.Fare
+                }
+            };
 
             mockRideMatchingService
                 .Setup(service => service.FindDriverAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<RideCategory>()))

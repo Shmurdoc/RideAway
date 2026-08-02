@@ -26,7 +26,6 @@ public class CreateUserHandlerTests
 
         var handler = new CreateUserHandler(mockUnitOfWork.Object, mockLogger.Object);
 
-        // Ensure expected values align during setup
         var command = new CreateUserCommand(new RideAway.Application.DTOs.CreateUserDTO
         {
             Name = "John Snow",
@@ -43,7 +42,6 @@ public class CreateUserHandlerTests
         result.Name.Should().Be("John Snow"); // Matches the value in the command setup
         result.Role.Should().Be(UserRole.Driver);
 
-        // Verify mock interactions
         mockUserRepo.Verify(r => r.AddAsync(It.IsAny<User>()), Times.Once);
         mockUnitOfWork.Verify(u => u.SaveChangesAsync(), Times.Once);
         mockLogger.Verify(

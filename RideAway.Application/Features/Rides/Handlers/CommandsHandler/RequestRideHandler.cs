@@ -31,23 +31,20 @@ namespace RideAway.Application.Features.Rides.Handlers.Commands
                 throw new InvalidOperationException("No available drivers at the moment.");
             }
 
-            // If Pickup & Destination is a String Address Convert to Location 
             var pickupLocation = await _geocodingService.ConvertAddressToLocationAsync(request.CreateRideRequestDTO.PickupLocation);
             var destination = await _geocodingService.ConvertAddressToLocationAsync(request.CreateRideRequestDTO.Destination);
-            //var pickupLocation = request.CreateRideRequestDTO.PickupLocation;
-            //var destination = request.CreateRideRequestDTO.Destination;
 
-            // Calculate fare of ride based on ride category
             var fare = await _rideMatchingService.CalculateFareAsync(
                 pickupLocation,
-                destination, request.CreateRideRequestDTO.RideCategory
+                destination,
+                request.CreateRideRequestDTO.RideCategory
             );
 
             var ride = _rideFactory.CreateRide(
-            request.CreateRideRequestDTO.PickupLocation,
-            request.CreateRideRequestDTO.Destination,
-            fare,
-            nearestDriver
+                request.CreateRideRequestDTO.PickupLocation,
+                request.CreateRideRequestDTO.Destination,
+                fare,
+                nearestDriver
             );
 
 

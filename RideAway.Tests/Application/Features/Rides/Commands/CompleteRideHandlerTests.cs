@@ -72,16 +72,12 @@ public class CompleteRideHandlerTests
         // Arrange
         var rideIdThatDoesNotExist = Guid.NewGuid();
 
-        // Mock the RideRepository to return null when queried with any ID
         var rides = RideFactory.GenerateRides(0);
-        var rideRepositoryMock = new Mock<IRideRepository>();
-         rideRepositoryMock = RideRepositoryMock.GetMockIRideRepository(rides);
+        var rideRepositoryMock = RideRepositoryMock.GetMockIRideRepository(rides);
 
-        // Mock UnitOfWork to return the mocked RideRepository
         var unitOfWorkMock = new Mock<IUnitOfWork>();
         unitOfWorkMock.Setup(u => u.RideRepository).Returns(rideRepositoryMock.Object);
 
-        // Create handler with mocked dependencies
         var handler = new CompleteRideHandler(unitOfWorkMock.Object, Mock.Of<ILogger<CompleteRideHandler>>());
 
         var command = new CompleteRideCommand(rideIdThatDoesNotExist);

@@ -17,17 +17,17 @@ namespace RideAway.Infrastructure.Mappers
             // Mapping CreateUserDTO to User
             CreateMap<CreateUserDTO, User>()
                 .ForMember(dest => dest.Name, opt => opt.MapFrom(src => src.Name))
-                .ForMember(dest => dest.Vehicle, opt => opt.Ignore()) // Vehicle is specific to drivers
-                .ForMember(dest => dest.CurrentLocation, opt => opt.Ignore()); // CurrentLocation is specific to drivers
+                .ForMember(dest => dest.Vehicle, opt => opt.Ignore())
+                .ForMember(dest => dest.CurrentLocation, opt => opt.Ignore());
 
             // Mapping User to UserDTO
             CreateMap<User, UserDTO>()
-                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id)); // Assuming BaseEntity has an Id property
+                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id));
 
             // Mapping User to DriverLocationUpdateDTO
             CreateMap<User, DriverLocationUpdateDTO>()
                 .ForMember(dest => dest.CurrentLocation, opt => opt.MapFrom(src => src.CurrentLocation))
-                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id)); // Assuming BaseEntity has an Id property
+                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id));
         }
     }
 }

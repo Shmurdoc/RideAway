@@ -7,14 +7,11 @@ using RideAway.Domain.Value_Object;
 using System.Linq.Expressions;
 
 
-namespace RideAway.Tests.Moq {
-
-
+namespace RideAway.Tests.Moq
+{
     public static class MockRideRepository
     {
-
-        // Generate fake Ride data
-        static List<Ride> GenerateItems(int numberOfItems)
+        private static List<Ride> GenerateItems(int numberOfItems)
         {
             var itemGenerator = new Faker<Ride>()
                 .RuleFor(x => x.Id, f => f.Random.Guid())

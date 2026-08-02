@@ -17,8 +17,6 @@ namespace RideAway.Tests.Application.Features.Rides.Commands
         private readonly Mock<IUnitOfWork> _mockUnitOfWork;
         private readonly Mock<ILogger<CancelRideHandler>> _mockLogger;
         private readonly Mock<IRideRepository> _mockRideRepository;
-        private readonly string pickup = "Pickup";
-        private readonly string destination = "Destination";
 
         public CancelRideHandlerTests()
         {
@@ -49,10 +47,9 @@ namespace RideAway.Tests.Application.Features.Rides.Commands
 
             // Assert
             result.Should().BeTrue();
-            ride.Status.Should().Be(RideStatus.Canceled); // Verify the ride status is updated
-            _mockUnitOfWork.Verify(x => x.SaveChangesAsync(), Times.Once); // Ensure changes are persisted
+            ride.Status.Should().Be(RideStatus.Canceled);
+            _mockUnitOfWork.Verify(x => x.SaveChangesAsync(), Times.Once);
 
-            // Verify logging
             _mockLogger.Verify(
                 x => x.Log(
                     LogLevel.Information,
@@ -68,7 +65,6 @@ namespace RideAway.Tests.Application.Features.Rides.Commands
         public async Task Handle_ShouldThrowException_WhenRideNotFound()
         {
             // Arrange
-
             var rideId = Guid.NewGuid();
             var command = new CancelRideCommand(rideId);
 
@@ -83,7 +79,6 @@ namespace RideAway.Tests.Application.Features.Rides.Commands
             // Assert
             await act.Should().ThrowAsync<RideNotFoundException>().WithMessage("Ride not found.");
 
-            // Verify warning log
             _mockLogger.Verify(
                 x => x.Log(
                     LogLevel.Warning,

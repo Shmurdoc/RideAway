@@ -38,7 +38,6 @@ public class RequestRideHandlerTests
 
         var command = new RequestRideCommand(dto);
 
-        // Expected ride
         var expectedRide = new Ride(pickupAddress, destinationAddress, calculatedFare)
         {
             DriverId = driverId,
@@ -54,7 +53,7 @@ public class RequestRideHandlerTests
 
         var matchingMock = new Mock<IRideMatchingService>();
         matchingMock.Setup(x => x.CalculateFareAsync(resolvedPickup, resolvedDestination, dto.RideCategory))
-        .ReturnsAsync(calculatedFare);
+            .ReturnsAsync(calculatedFare);
 
         var rideFactoryMock = new Mock<IRideFactory>();
         rideFactoryMock.Setup(x => x.CreateRide(
@@ -83,13 +82,11 @@ public class RequestRideHandlerTests
         result.PickupLocation.Should().Be(pickupAddress);
         result.Destination.Should().Be(destinationAddress);
         result.DriverId.Should().Be(driverId);
-        result.Status.Should().Be(RideStatus.Requested); // ✅ Important
+        result.Status.Should().Be(RideStatus.Requested);
 
         rideRepoMock.Verify(x => x.AddAsync(It.IsAny<Ride>()), Times.Once);
         unitOfWorkMock.Verify(x => x.SaveChangesAsync(), Times.Once);
     }
-
-
 
     [Fact]
     public async Task Handle_ShouldThrowException_WhenDriverIsEmpty()
