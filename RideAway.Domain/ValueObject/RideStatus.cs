@@ -12,7 +12,8 @@ namespace RideAway.Domain.Value_Object
         Accepted = 1,    // Driver accepted the ride
         InProgress = 2,  // Ride is ongoing
         Completed = 3,   // Ride is finished
-        Canceled = 4     // Ride was canceled
+        Canceled = 4,    // Ride was canceled
+        Paid = 5         // Ride is finished AND settled. Terminal.
     }
 
 }

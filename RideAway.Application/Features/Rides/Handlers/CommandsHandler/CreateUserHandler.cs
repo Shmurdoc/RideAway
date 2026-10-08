@@ -1,14 +1,19 @@
 ﻿using MediatR;
 using Microsoft.Extensions.Logging;
+using RideAway.Application.DTOs;
 using RideAway.Application.Features.Rides.Commands;
 using RideAway.Application.IRepositories;
 using RideAway.Application.Services;
 using RideAway.Domain.Entities;
+using RideAway.Domain.Entities.Enum;
 
 namespace RideAway.Application.Features.Rides.Handlers.Commands
 {
-    public class CreateUserHandler : IRequestHandler<CreateUserCommand, User>
+    public class CreateUserHandler : IRequestHandler<CreateUserCommand, UserProfileDTO>
     {
+        private const int MinimumPasswordLength = 12;
+        private const int MaximumPasswordLength = 128;
+
         private readonly IUnitOfWork _unitOfWork;
         private readonly ILogger<CreateUserHandler> _logger;
 
@@ -18,22 +23,36 @@ namespace RideAway.Application.Features.Rides.Handlers.Commands
             _logger = logger;
         }
 
-        public async Task<User> Handle(CreateUserCommand request, CancellationToken cancellationToken)
+        public async Task<UserProfileDTO> Handle(CreateUserCommand request, CancellationToken cancellationToken)
         {
-            if (string.IsNullOrWhiteSpace(request.createUserDTO.Email))
+            var dto = request.createUserDTO;
+
+            if (string.IsNullOrWhiteSpace(dto.Email))
                 throw new ArgumentException("Email is required.");
 
-            var existingUser = await _unitOfWork.UserRepository.Get(u => u.Email == request.createUserDTO.Email);
+            if (string.IsNullOrWhiteSpace(dto.Password))
+                throw new ArgumentException("Password is required.");
+
+            if (dto.Password.Length < MinimumPasswordLength || dto.Password.Length > MaximumPasswordLength)
+                throw new ArgumentException($"Password must be between {MinimumPasswordLength} and {MaximumPasswordLength} characters.");
+
+            var email = dto.Email.Trim().ToLowerInvariant();
+
+            var existingUser = await _unitOfWork.UserRepository.Get(u => u.Email == email);
             if (existingUser != null)
                 throw new ArgumentException("A user with this email already exists.");
 
+            // Admin is never self-assignable. Drivers need an elevated account, so the
+            // requested type is honoured only when it is exactly Driver.
+            var role = dto.Role == UserRole.Driver ? UserRole.Driver : UserRole.Rider;
+
             var user = new User
             {
-                Name = request.createUserDTO.Name,
-                Email = request.createUserDTO.Email,
-                PhoneNumber = request.createUserDTO.PhoneNumber,
-                Role = request.createUserDTO.Role,
-                PasswordHash = PasswordHasher.Hash(request.createUserDTO.Password)
+                Name = dto.Name?.Trim() ?? string.Empty,
+                Email = email,
+                PhoneNumber = dto.PhoneNumber,
+                Role = role,
+                PasswordHash = PasswordHasher.Hash(dto.Password)
             };
 
             await _unitOfWork.UserRepository.AddAsync(user);
@@ -41,7 +60,14 @@ namespace RideAway.Application.Features.Rides.Handlers.Commands
 
             _logger.LogInformation("New user created with ID: {UserId} and Role: {Role}", user.Id, user.Role);
 
-            return user;
+            return new UserProfileDTO
+            {
+                Id = user.Id,
+                Name = user.Name,
+                Email = user.Email,
+                PhoneNumber = user.PhoneNumber,
+                Role = user.Role
+            };
         }
     }
 }

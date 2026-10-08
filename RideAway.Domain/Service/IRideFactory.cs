@@ -9,7 +9,7 @@ namespace RideAway.Domain.Service
 {
     public interface IRideFactory
     {
-        Ride CreateRide(string pickupLocation, string destination, decimal fare, Guid driverId);
+        Ride CreateRide(string pickupLocation, string destination, decimal fare, Guid riderId, Guid? driverId);
     }
 
 }

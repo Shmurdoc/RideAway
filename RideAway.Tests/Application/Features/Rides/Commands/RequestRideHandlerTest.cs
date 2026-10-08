@@ -36,11 +36,13 @@ public class RequestRideHandlerTests
             DriverId = driverId
         };
 
-        var command = new RequestRideCommand(dto);
+        var riderId = Guid.NewGuid();
+        var command = new RequestRideCommand(dto, riderId);
 
         var expectedRide = new Ride(pickupAddress, destinationAddress, calculatedFare)
         {
             DriverId = driverId,
+            RiderId = riderId,
             RiderCategory = dto.RideCategory,
             Status = RideStatus.Requested
         };
@@ -60,6 +62,7 @@ public class RequestRideHandlerTests
             pickupAddress,
             destinationAddress,
             calculatedFare,
+            riderId,
             driverId))
             .Returns(expectedRide);
 
@@ -89,18 +92,64 @@ public class RequestRideHandlerTests
     }
 
     [Fact]
-    public async Task Handle_ShouldThrowException_WhenDriverIsEmpty()
+    public async Task Handle_ShouldRecordTheAuthenticatedRider_SoTheRideHasAnOwner()
     {
-        // Arrange
+        // A ride must always carry the authenticated rider. Without this the ride has
+        // no owner and no ownership check can be enforced later.
         var dto = new CreateRideRequestDTO
         {
             PickupLocation = "123 Main St",
             Destination = "456 Elm St",
             RideCategory = RideCategory.Standard,
-            DriverId = Guid.Empty
+            DriverId = Guid.NewGuid()
         };
 
-        var command = new RequestRideCommand(dto);
+        var riderId = Guid.NewGuid();
+        var command = new RequestRideCommand(dto, riderId);
+
+        var expectedRide = new Ride(dto.PickupLocation, dto.Destination, 50m)
+        {
+            RiderId = riderId,
+            DriverId = dto.DriverId,
+            Status = RideStatus.Requested
+        };
+
+        var rideFactoryMock = new Mock<IRideFactory>();
+        rideFactoryMock
+            .Setup(x => x.CreateRide(dto.PickupLocation, dto.Destination, 50m, riderId, dto.DriverId))
+            .Returns(expectedRide);
+
+        var geoMock = new Mock<IGeoCodingService>();
+        geoMock.Setup(g => g.ConvertAddressToLocationAsync(It.IsAny<string>()))
+               .ReturnsAsync(new Location(0, 0, "resolved"));
+
+        var matchingMock = new Mock<IRideMatchingService>();
+        matchingMock.Setup(m => m.CalculateFareAsync(It.IsAny<Location>(), It.IsAny<Location>(), It.IsAny<RideCategory>()))
+                    .ReturnsAsync(50m);
+
+        var unitOfWorkMock = new Mock<IUnitOfWork>();
+        unitOfWorkMock.Setup(u => u.RideRepository).Returns(new Mock<IRideRepository>().Object);
+        unitOfWorkMock.Setup(u => u.SaveChangesAsync()).ReturnsAsync(1);
+
+        var handler = new RequestRideHandler(
+            unitOfWorkMock.Object, matchingMock.Object, geoMock.Object, rideFactoryMock.Object);
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        result.RiderId.Should().Be(riderId);
+        rideFactoryMock.Verify(x => x.CreateRide(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<decimal>(), riderId, It.IsAny<Guid?>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldReject_WhenTheTokenCarriesNoRider()
+    {
+        var dto = new CreateRideRequestDTO
+        {
+            PickupLocation = "123 Main St",
+            Destination = "456 Elm St"
+        };
+
+        var command = new RequestRideCommand(dto, Guid.Empty);
 
         var handler = new RequestRideHandler(
             Mock.Of<IUnitOfWork>(),
@@ -108,11 +157,8 @@ public class RequestRideHandlerTests
             Mock.Of<IGeoCodingService>(),
             Mock.Of<RideFactory>());
 
-        // Act
         Func<Task> act = async () => await handler.Handle(command, CancellationToken.None);
 
-        // Assert
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("No available drivers at the moment.");
+        await act.Should().ThrowAsync<UnauthorizedAccessException>();
     }
 }

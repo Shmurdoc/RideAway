@@ -10,10 +10,16 @@ namespace RideAway.Domain.Service
 {
     public class RideFactory : IRideFactory
     {
-        public Ride CreateRide(string pickupLocation, string destination, decimal fare, Guid driverId)
+        public Ride CreateRide(string pickupLocation, string destination, decimal fare, Guid riderId, Guid? driverId)
         {
+            if (riderId == Guid.Empty)
+                throw new ArgumentException("A ride must have a rider.", nameof(riderId));
+
+            // The rider is recorded at creation. Without this the ride has no owner and
+            // no ownership check can be enforced later.
             return new Ride(pickupLocation, destination, fare)
             {
+                RiderId = riderId,
                 DriverId = driverId,
                 Status = RideStatus.Requested
             };

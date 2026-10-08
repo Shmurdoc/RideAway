@@ -17,6 +17,7 @@ namespace RideAway.Tests.Application.Features.Rides.Commands
         private readonly Mock<IUnitOfWork> _mockUnitOfWork;
         private readonly Mock<ILogger<CancelRideHandler>> _mockLogger;
         private readonly Mock<IRideRepository> _mockRideRepository;
+        private readonly Guid requesterId = Guid.NewGuid();
 
         public CancelRideHandlerTests()
         {
@@ -35,7 +36,8 @@ namespace RideAway.Tests.Application.Features.Rides.Commands
                                      fare: 100);
             ride.Status = RideStatus.Accepted; // Ensure the ride is active and valid for cancellation
 
-            var command = new CancelRideCommand(ride.Id);
+            ride.RiderId = requesterId;
+            var command = new CancelRideCommand(ride.Id, requesterId);
 
             _mockRideRepository.Setup(repo => repo.GetByIdAsync(ride.Id))
                                .ReturnsAsync(ride);
@@ -66,7 +68,7 @@ namespace RideAway.Tests.Application.Features.Rides.Commands
         {
             // Arrange
             var rideId = Guid.NewGuid();
-            var command = new CancelRideCommand(rideId);
+            var command = new CancelRideCommand(rideId, requesterId);
 
             _mockRideRepository.Setup(repo => repo.GetByIdAsync(rideId))
                                .ReturnsAsync((Ride?)null);
@@ -100,7 +102,8 @@ namespace RideAway.Tests.Application.Features.Rides.Commands
                 Status = RideStatus.Completed
             };
 
-            var command = new CancelRideCommand(ride.Id);
+            ride.RiderId = requesterId;
+            var command = new CancelRideCommand(ride.Id, requesterId);
 
             _mockRideRepository.Setup(repo => repo.GetByIdAsync(ride.Id))
                                .ReturnsAsync(ride);
@@ -111,16 +114,7 @@ namespace RideAway.Tests.Application.Features.Rides.Commands
             Func<Task> act = async () => await handler.Handle(command, CancellationToken.None);
 
             // Assert
-            await act.Should().ThrowAsync<InvalidRideStatusException>().WithMessage("Ride is already completed and cannot be canceled.");
-
-            _mockLogger.Verify(
-                x => x.Log(
-                    LogLevel.Warning,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Cannot cancel a completed ride")),
-                    null,
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.Once);
+            await act.Should().ThrowAsync<RideAlreadyCompletedException>().WithMessage("This ride has already finished and cannot be canceled.");
         }
 }
 }

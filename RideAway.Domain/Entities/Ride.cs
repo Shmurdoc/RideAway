@@ -1,5 +1,7 @@
 ﻿
+using System.Text.Json.Serialization;
 using RideAway.Domain.Entities.Enum;
+using RideAway.Domain.Exceptions;
 using RideAway.Domain.Value_Object;
 
 namespace RideAway.Domain.Entities
@@ -7,8 +9,17 @@ namespace RideAway.Domain.Entities
     public class Ride : BaseEntity
     {
         public Guid RiderId { get; set; }
+
+        /// <summary>
+        /// Navigation properties are never serialized: they would drag the whole user
+        /// graph (and any future lazy-loaded associations) into API responses.
+        /// </summary>
+        [JsonIgnore]
         public User Rider { get; set; } = null!;
+
         public Guid? DriverId { get; set; }
+
+        [JsonIgnore]
         public User? Driver { get; set; }
         public string PickupLocation { get; set; } = null!;
         public string Destination { get; set; } = null!;
@@ -31,9 +42,69 @@ namespace RideAway.Domain.Entities
             Status = RideStatus.Requested;
         }
 
+        public void Accept(Guid driverId)
+        {
+            EnsureStatus(RideStatus.Requested, "accepted");
+            DriverId = driverId;
+            Status = RideStatus.Accepted;
+        }
+
+        public void StartTrip(Guid driverId)
+        {
+            EnsureStatus(RideStatus.Accepted, "started");
+            EnsureAssignedDriver(driverId);
+            Status = RideStatus.InProgress;
+        }
+
+        public void Complete(Guid driverId)
+        {
+            EnsureStatus(RideStatus.InProgress, "completed");
+            EnsureAssignedDriver(driverId);
+            Status = RideStatus.Completed;
+        }
+
+        public void Cancel(Guid actorId)
+        {
+            if (Status is RideStatus.Completed or RideStatus.Paid)
+                throw new RideAlreadyCompletedException("This ride has already finished and cannot be canceled.");
+
+            if (Status == RideStatus.Canceled)
+                return;
+
+            EnsureParticipant(actorId);
+            Status = RideStatus.Canceled;
+        }
+
+        /// <summary>
+        /// Settles the ride. Only a finished ride can be settled, and only once: this
+        /// is what stops a cancelled or in-flight ride from being resurrected by a
+        /// replayed payment request.
+        /// </summary>
         public void MarkAsPaid()
         {
-            Status = RideStatus.Completed;
+            if (Status == RideStatus.Paid)
+                throw new PaymentProcessingException("This ride has already been paid.");
+
+            EnsureStatus(RideStatus.Completed, "paid");
+            Status = RideStatus.Paid;
+        }
+
+        private void EnsureStatus(RideStatus expected, string action)
+        {
+            if (Status != expected)
+                throw new InvalidRideStatusException($"A ride cannot be {action} while it is {Status}.");
+        }
+
+        private void EnsureAssignedDriver(Guid driverId)
+        {
+            if (DriverId != driverId)
+                throw new UnauthorizedAccessException("This ride is not assigned to you.");
+        }
+
+        private void EnsureParticipant(Guid actorId)
+        {
+            if (RiderId != actorId && DriverId != actorId)
+                throw new UnauthorizedAccessException("You are not authorized to perform this action.");
         }
     }
 

@@ -52,7 +52,10 @@ checked into the repository:
 | `GoogleMaps:ApiKey` | Geocoding + distance matrix calls | Yes (matching/geocoding) |
 | `Stripe:SecretKey` | Payment processing (test key ok) | Yes (payments) |
 | `Jwt:Issuer` | Token issuer claim | Yes |
+| `Jwt:Audience` | Token audience claim (audience is validated) | Yes |
 | `Jwt:Key` | Token signing key; set in `appsettings.Development.json` for local dev | Yes (auth) |
+| `Stripe:WebhookSecret` | Signing secret for the Stripe webhook | Yes (card payments) |
+| `RateLimiting:Strict` / `RateLimiting:Global` | Request budgets per IP | No (defaults on) |
 | `SendGrid:ApiKey` | Email notifications | Optional |
 | `Twilio:AccountSid`, `Twilio:AuthToken` | SMS notifications | Optional |
 | `Cors:AllowedOrigins` | Comma-separated allowed browser origins | Yes (Production) |
@@ -69,8 +72,10 @@ app reads them from the environment, so no secrets need to be committed:
 export ConnectionStrings__DefaultConnection="Server=...;Database=RideAway;..."
 export Jwt__Key="<32+ char signing key>"
 export Jwt__Issuer="RideAway"
+export Jwt__Audience="RideAway"
 export GoogleMaps__ApiKey="..."
 export Stripe__SecretKey="..."
+export Stripe__WebhookSecret="whsec_..."
 export Cors__AllowedOrigins__0="https://app.rideaway.com"
 ```
 
@@ -84,11 +89,11 @@ liveness/readiness).
 
 ### Docker
 
-A multi-stage `Dockerfile` builds and runs the API on `:80`:
+A multi-stage `Dockerfile` builds the app and runs it as an unprivileged user on `:8080`:
 
 ```bash
 docker build -t rideaway-api .
-docker run -p 8080:80 --env-file production.env rideaway-api
+docker run -p 8080:8080 --env-file production.env rideaway-api
 curl http://localhost:8080/health
 ```
 
@@ -116,40 +121,72 @@ The CI pipeline publishes the app and uploads it as a `rideaway-api` artifact.
 
 All endpoints except `POST /api/auth/login` and `POST /api/User` require a bearer token.
 
-1. Create a user: `POST /api/User` with `{ "createUserDTO": { "name": "...", "email": "...", "role": "Rider" } }`.
+1. Create a user: `POST /api/User` with `{ "createUserDTO": { "name": "...", "email": "...", "password": "<12+ chars>", "role": "Rider" } }`.
+   The `role` field is only honoured for `Driver`; every other value (including `Admin`)
+   is registered as a `Rider`, so a self-registering caller cannot escalate.
 2. Login: `POST /api/auth/login` with the same credentials to receive a JWT.
 3. Send the token as `Authorization: Bearer <token>`.
 
 Driver-only endpoints (`/api/drivers/*`) require a user with role `Driver`.
 
+The identity of the caller always comes from the token. Client-supplied user or driver
+ids are rejected, so one user cannot act on another user's ride, payment or location.
+
+Both credential endpoints are rate limited per IP (10 requests / 5 minutes by default).
+
 ## API Reference
 
 ### Auth
 
-| Method | Endpoint | Auth | Description |
-| --- | --- | --- | --- |
-| POST | `/api/auth/login` | None | Authenticate and return a JWT |
+| Method | Endpoint | Auth | Rate limited | Description |
+| --- | --- | --- | --- | --- |
+| POST | `/api/auth/login` | None | Yes | Authenticate and return a JWT |
 
 ### Users
 
 | Method | Endpoint | Auth | Description |
 | --- | --- | --- | --- |
-| POST | `/api/User` | None | Create a user (rider or driver) |
-| GET | `/api/User/{id}` | Bearer | Get a user by id |
+| POST | `/api/User` | None | Create a user (rate limited; always a Rider unless `Driver` is requested) |
+| GET | `/api/User/{id}` | Bearer | Get a profile - your own, or anyone's if you are an admin |
 | GET | `/api/User/available-rides?startLocation=&endLocation=&ride=` | Bearer | Find nearby drivers within 10 km |
-| POST | `/api/User/request` | Bearer | Request a ride |
-| POST | `/api/User/cancel` | Bearer | Cancel a ride |
-| POST | `/api/User/process` | Bearer | Process a payment |
+| POST | `/api/User/request` | Bearer | Request a ride (you become its rider) |
+| POST | `/api/User/cancel` | Rider/Driver | Cancel a ride you are party to |
+| POST | `/api/User/process` | Rider | Start payment for a completed ride you own |
 
 ### Drivers
 
 | Method | Endpoint | Auth | Description |
 | --- | --- | --- | --- |
-| POST | `/api/drivers/update-location` | Driver | Update current location |
-| POST | `/api/drivers/collect-rider` | Driver | Start a ride after picking up the rider |
-| POST | `/api/drivers/process-payment` | Driver | Process payment for a ride |
-| POST | `/api/drivers/accept` | Driver | Accept a ride request |
-| POST | `/api/drivers/cancel` | Driver | Cancel a ride |
+| POST | `/api/drivers/update-location` | Driver | Update your own location |
+| POST | `/api/drivers/accept` | Driver | Accept a requested ride |
+| POST | `/api/drivers/collect-rider` | Driver | Start a ride you are assigned to |
+| POST | `/api/drivers/complete` | Driver | Complete a ride you are assigned to |
+| POST | `/api/drivers/confirm-cash` | Driver | Confirm cash collected, settling the ride |
+| POST | `/api/drivers/cancel` | Driver | Cancel a ride you are party to |
+
+### Webhooks
+
+| Method | Endpoint | Auth | Description |
+| --- | --- | --- | --- |
+| POST | `/api/webhooks/stripe` | Stripe signature | Settles a card payment (`checkout.session.completed`) |
+
+## Payments
+
+The amount charged is **always** the ride's server-computed fare - it is never taken
+from the request. A ride moves through
+`Requested -> Accepted -> InProgress -> Completed -> Paid`, and each transition is
+validated by the `Ride` aggregate, so a cancelled or in-flight ride cannot be settled
+and a settled ride cannot be settled twice.
+
+Card payments are **pending** until Stripe confirms them. Creating a checkout session
+is not treated as payment: the ride is marked paid only when a signature-verified
+`checkout.session.completed` webhook arrives and the settled amount and currency match
+what was owed. Cash payments are also pending until the assigned driver confirms
+collection via `/api/drivers/confirm-cash`.
+
+To accept card payments, register `POST /api/webhooks/stripe` as a webhook endpoint in
+the Stripe dashboard for the `checkout.session.completed` event, and set the signing
+secret as `Stripe:WebhookSecret`.
 
 ## Build & Test
 
@@ -165,17 +202,39 @@ The repository pins the .NET SDK in `global.json` so local builds match CI exact
 
 ## Known Limitations
 
-- The project targets .NET 6, which is out of support. Upgrading to a supported LTS
-  (e.g., .NET 8) is recommended before production.
+**Action required:** a Google Maps API key (`AIzaSyDud...`) and an internal hostname were
+committed to this repository's history in 2025. The key must be **rotated in Google Cloud
+Console** and the history rewritten (`git filter-repo`) - deleting the line does not undo
+publication. Until that is done, treat the key as public.
+
+Remaining gaps:
+
+- The project targets .NET 6, which is out of support (no security patches). Upgrading to
+  a supported LTS (e.g., .NET 8) is recommended before production.
 - AutoMapper 11 is affected by a high-severity DoS advisory
   ([GHSA-rvv3-g6hj-g44x](https://github.com/advisories/GHSA-rvv3-g6hj-g44x)). The patched
   versions (15.1.1) require .NET 8, so the upgrade is deferred to the framework migration.
   The API only maps server-side entities to DTOs; no attacker-controlled deep object
   graphs are mapped.
-- JWT validation does not enforce an audience (`ValidateAudience = false`). Add
-  `Jwt:Audience` validation if token audience checks are required.
+- PBKDF2 iteration count is 100,000. That is below current OWASP guidance for
+  PBKDF2-HMAC-SHA256 (600,000+). The stored hash format carries no version or cost
+  parameter, so raising it needs a rehash-on-login migration.
+- Command validation is hand-rolled inside handlers rather than using a validation
+  library, so new commands must be reviewed for input validation by hand.
+- Cancellation does not void an in-flight Stripe Checkout Session; a customer can still
+  complete payment for a cancelled ride (the ride will not settle, and the payment is
+  recorded, but the money is not automatically refunded).
+- No optimistic concurrency token (`rowversion`) on `Ride`/`Payment`. The unique index on
+  `Payments(RideId)` prevents double settlement at the database level, but concurrent
+  ride-state transitions rely on the aggregate's status checks alone.
+- Email and phone numbers are stored in cleartext. Enable SQL Server TDE and consider
+  Always Encrypted for `PhoneNumber`.
+- `TrustServerCertificate=True` is set on the sample connection string, which disables
+  database TLS validation. Remove it and install the CA in production.
 - Tests are unit-level only; add integration tests (e.g., WebApplicationFactory) for
-  end-to-end coverage of the API layer.
+  end-to-end coverage of the API layer, including the authorization matrix.
+- Rate limiting is per-process and in-memory, so it does not apply across multiple
+  instances. Use a gateway or Redis-backed limiter when scaling horizontally.
 
 ## Database
 

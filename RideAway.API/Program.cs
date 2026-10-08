@@ -1,4 +1,5 @@
 using System.Reflection;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using RideAway.API.Middleware;
 using RideAway.Infrastructure.DependencyInjection;
@@ -22,7 +23,20 @@ builder.Services.AddSwaggerGen(options =>
 builder.Services.ImplementPersistence(builder.Configuration);
 builder.Services.AddHealthChecks().AddDbContextCheck<ApplicationDbContext>();
 
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+{
+    options.ValueLengthLimit = 8 * 1024;
+    options.MultipartBodyLengthLimit = 8 * 1024;
+});
+
 var app = builder.Build();
+
+// Behind a reverse proxy/ingress this is what makes UseHttpsRedirection and the
+// client IP (used by the rate limiter) reflect the real request.
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
 
 if (app.Environment.IsDevelopment())
 {
@@ -33,8 +47,10 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseMiddleware<ExceptionMiddleware>();
+app.UseMiddleware<SecurityHeadersMiddleware>();
 
 app.UseCors();
+app.UseMiddleware<RateLimitingMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -55,6 +71,15 @@ static void ValidateConfiguration(IConfiguration configuration, IHostEnvironment
 
     if (string.IsNullOrWhiteSpace(configuration["Jwt:Issuer"]))
         missing.Add("Jwt:Issuer");
+
+    if (string.IsNullOrWhiteSpace(configuration["Jwt:Audience"]))
+        missing.Add("Jwt:Audience");
+
+    if (string.IsNullOrWhiteSpace(configuration["GoogleMaps:ApiKey"]))
+        missing.Add("GoogleMaps:ApiKey");
+
+    if (string.IsNullOrWhiteSpace(configuration["Stripe:SecretKey"]))
+        missing.Add("Stripe:SecretKey");
 
     if (!environment.IsDevelopment() && configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() is not { Length: > 0 })
         missing.Add("Cors:AllowedOrigins");

@@ -4,8 +4,8 @@ using RideAway.Application.DTOs;
 using RideAway.Application.IRepositories;
 using RideAway.Application.IServices;
 using RideAway.Domain.Entities;
-using RideAway.Domain.Exceptions;
 using RideAway.Domain.Entities.Enum;
+using RideAway.Domain.Exceptions;
 using RideAway.Domain.Value_Object;
 
 namespace RideAway.Application.Services
@@ -29,50 +29,24 @@ namespace RideAway.Application.Services
             _currency = configuration["Stripe:Currency"] ?? "ZAR";
         }
 
-        public async Task<bool> ProcessPayment(Guid paymentId)
+        /// <summary>
+        /// Creates the single pending payment record for a ride. Nothing is marked
+        /// successful here - settlement happens later via <see cref="ConfirmPaymentAsync"/>
+        /// (Stripe webhook) or <see cref="ConfirmCashCollectionAsync"/> (driver confirms).
+        /// </summary>
+        public async Task<PaymentResultDTO> CreatePaymentAsync(Guid rideId, Guid userId, decimal amount, PaymentMethod method)
         {
-            var payment = await _unitOfWork.PaymentRepository.GetByIdAsync(paymentId);
+            var existing = await _unitOfWork.PaymentRepository.Get(p => p.RideId == rideId && p.Status == PaymentStatus.Completed);
+            if (existing != null)
+                throw new PaymentProcessingException("This ride has already been paid.");
 
-            if (payment == null)
-            {
-                _logger.LogWarning("Payment not found for ID: {PaymentId}", paymentId);
-                throw new PaymentProcessingException("Payment not found.");
-            }
-
-            if (payment.Status == PaymentStatus.Completed)
-            {
-                _logger.LogInformation("Payment already completed for ID: {PaymentId}", paymentId);
-                return true; // Already processed
-            }
-
-            payment.Status = PaymentStatus.Completed;
-            payment.IsSuccessful = true;
-
-            await _unitOfWork.SaveChangesAsync();
-
-            _logger.LogInformation("Payment marked as completed successfully. ID: {PaymentId}", paymentId);
-
-            return true;
-        }
-
-        public async Task<PaymentResultDTO> ProcessPaymentAsync(Guid userId, decimal amount, PaymentMethod method)
-        {
-            var payment = new Payment
-            {
-                UserId = userId,
-                Amount = amount,
-                Method = method,
-                PaymentDate = DateTime.UtcNow,
-                Status = PaymentStatus.Pending,
-                IsSuccessful = false
-            };
-
-            bool success = false;
+            var payment = Payment.CreatePending(rideId, userId, amount, method);
 
             switch (method)
             {
                 case PaymentMethod.cash:
-                    success = true;
+                    // Cash is never auto-successful. The assigned driver confirms
+                    // collection, which is what settles the ride.
                     break;
 
                 case PaymentMethod.card:
@@ -80,29 +54,112 @@ namespace RideAway.Application.Services
                     if (_stripeService == null)
                         throw new InvalidOperationException("Stripe service is not configured.");
 
-                    var result = await _stripeService.CreatePaymentSession(amount, _currency);
-                    payment.TransactionReference = result.Reference;
-                    success = result.Success;
+                    var session = await _stripeService.CreatePaymentSession(amount, _currency);
+                    payment.TransactionReference = session.Reference;
                     break;
 
                 default:
-                    throw new NotImplementedException($"Payment method {method} not supported.");
+                    throw new PaymentProcessingException($"Payment method {method} is not supported.");
             }
-
-            payment.IsSuccessful = success;
-            payment.Status = success ? PaymentStatus.Completed : PaymentStatus.Failed;
 
             await _unitOfWork.PaymentRepository.AddAsync(payment);
             await _unitOfWork.SaveChangesAsync();
 
-            _logger.LogInformation("Payment processed for user {UserId}. Method: {Method}, Success: {Success}", userId, method, success);
+            _logger.LogInformation("Created pending payment {PaymentId} for ride {RideId}, method {Method}",
+                payment.Id, rideId, method);
 
             return new PaymentResultDTO
             {
-                IsSuccessful = payment.IsSuccessful,
-                TransactionReference = payment.TransactionReference!,
-                PaymentDate = payment.PaymentDate
+                IsSuccessful = false,
+                TransactionReference = payment.TransactionReference ?? string.Empty,
+                PaymentDate = payment.PaymentDate,
+                FailureReason = payment.Method == PaymentMethod.cash
+                    ? "Awaiting confirmation of cash collection by the driver."
+                    : null
             };
+        }
+
+        /// <summary>
+        /// Settles a payment from a verified Stripe webhook event. This is the only
+        /// path by which a card payment becomes successful.
+        /// </summary>
+        public async Task ConfirmPaymentAsync(string transactionReference, decimal verifiedAmount, string currency)
+        {
+            var payment = await _unitOfWork.PaymentRepository
+                .Get(p => p.TransactionReference == transactionReference, tracked: true);
+
+            if (payment == null)
+            {
+                _logger.LogWarning("Webhook referenced an unknown payment: {Reference}", transactionReference);
+                return;
+            }
+
+            if (payment.Status == PaymentStatus.Completed)
+                return;
+
+            // Never trust the amount from the webhook payload alone - the stored
+            // pending payment is the authoritative record of what was owed.
+            if (payment.Amount != verifiedAmount)
+            {
+                payment.MarkAsFailed("Settled amount did not match the amount due.");
+                await _unitOfWork.SaveChangesAsync();
+                _logger.LogError("Amount mismatch for payment {PaymentId}: expected {Expected}, settled {Actual}",
+                    payment.Id, payment.Amount, verifiedAmount);
+                return;
+            }
+
+            if (!string.Equals(currency, _currency, StringComparison.OrdinalIgnoreCase))
+            {
+                payment.MarkAsFailed("Settled currency did not match the expected currency.");
+                await _unitOfWork.SaveChangesAsync();
+                _logger.LogError("Currency mismatch for payment {PaymentId}: expected {Expected}, got {Actual}",
+                    payment.Id, _currency, currency);
+                return;
+            }
+
+            payment.MarkAsCompleted();
+
+            var ride = await _unitOfWork.RideRepository.GetByIdAsync(payment.RideId);
+            ride?.MarkAsPaid();
+
+            await _unitOfWork.RideRepository.UpdateAsync(ride!);
+            await _unitOfWork.SaveChangesAsync();
+
+            _logger.LogInformation("Payment {PaymentId} settled via Stripe webhook; ride {RideId} marked paid",
+                payment.Id, payment.RideId);
+        }
+
+        /// <summary>
+        /// Settles a cash payment. Only the driver assigned to the ride may confirm
+        /// that they collected the fare.
+        /// </summary>
+        public async Task ConfirmCashCollectionAsync(Guid rideId, Guid driverId)
+        {
+            var ride = await _unitOfWork.RideRepository.GetByIdAsync(rideId);
+            if (ride == null)
+                throw new RideNotFoundException("Ride not found.");
+
+            if (ride.DriverId != driverId)
+                throw new UnauthorizedAccessException("This ride is not assigned to you.");
+
+            var payment = await _unitOfWork.PaymentRepository
+                .Get(p => p.RideId == rideId && p.Status == PaymentStatus.Pending, tracked: true);
+
+            if (payment == null)
+                throw new PaymentProcessingException("There is no pending payment for this ride.");
+
+            if (payment.Method != PaymentMethod.cash)
+                throw new PaymentProcessingException("This ride is not being paid in cash.");
+
+            payment.MarkAsCompleted();
+            ride.MarkAsPaid();
+
+            await _unitOfWork.PaymentRepository.UpdateAsync(payment);
+            await _unitOfWork.RideRepository.UpdateAsync(ride);
+            await _unitOfWork.SaveChangesAsync();
+
+            _logger.LogInformation("Cash payment {PaymentId} confirmed by driver {DriverId}; ride {RideId} marked paid",
+                payment.Id, driverId, rideId);
         }
     }
 }

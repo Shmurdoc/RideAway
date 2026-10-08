@@ -1,10 +1,8 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.Extensions.Logging;
 using RideAway.Application.Features.Rides.Commands;
 using RideAway.Application.IRepositories;
-using RideAway.Domain.Entities.Enum;
 using RideAway.Domain.Exceptions;
-using RideAway.Domain.Value_Object;
 
 namespace RideAway.Application.Features.Rides.Handlers.Commands
 {
@@ -21,7 +19,7 @@ namespace RideAway.Application.Features.Rides.Handlers.Commands
 
         public async Task<bool> Handle(CancelRideCommand request, CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Handling CancelRideCommand for RideId: {RideId}", request.RideId);
+            _logger.LogInformation("Handling CancelRideCommand for RideId: {RideId}, RequesterId: {RequesterId}", request.RideId, request.RequesterId);
 
             var ride = await _unitOfWork.RideRepository.GetByIdAsync(request.RideId);
 
@@ -31,14 +29,11 @@ namespace RideAway.Application.Features.Rides.Handlers.Commands
                 throw new RideNotFoundException("Ride not found.");
             }
 
-            if (ride.Status == RideStatus.Completed)
-            {
-                _logger.LogWarning("Cannot cancel a completed ride. RideId: {RideId}", request.RideId);
-                throw new InvalidRideStatusException("Ride is already completed and cannot be canceled.");
-            }
+            // The aggregate refuses cancellation by anyone other than the rider or the
+            // assigned driver, and refuses it once the ride has finished.
+            ride.Cancel(request.RequesterId);
 
-            ride.Status = RideStatus.Canceled;
-
+            await _unitOfWork.RideRepository.UpdateAsync(ride);
             await _unitOfWork.SaveChangesAsync();
 
             _logger.LogInformation("Ride canceled successfully. RideId: {RideId}", request.RideId);

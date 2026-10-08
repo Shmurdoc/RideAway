@@ -11,7 +11,13 @@ namespace RideAway.Application.IServices
 {
     public interface IPaymentProcessingService
     {
-        Task<bool> ProcessPayment(Guid rideId);
-        Task<PaymentResultDTO> ProcessPaymentAsync(Guid userId, decimal amount, PaymentMethod method);
+        /// <summary>Creates the single pending payment record for a ride.</summary>
+        Task<PaymentResultDTO> CreatePaymentAsync(Guid rideId, Guid userId, decimal amount, PaymentMethod method);
+
+        /// <summary>Settles a payment from a signature-verified Stripe webhook event.</summary>
+        Task ConfirmPaymentAsync(string transactionReference, decimal verifiedAmount, string currency);
+
+        /// <summary>Settles a cash payment. Only the assigned driver may call this.</summary>
+        Task ConfirmCashCollectionAsync(Guid rideId, Guid driverId);
     }
 }

@@ -30,7 +30,7 @@ public class CreateUserHandlerTests
         {
             Name = "John Snow",
             Email = "john.snow@example.com",
-            Password = "P@ssw0rd!",
+            Password = "P@ssw0rd!LongEnough",
             Role = UserRole.Driver
         });
 

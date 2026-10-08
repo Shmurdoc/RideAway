@@ -24,15 +24,19 @@ namespace RideAway.Application.Features.Rides.Handlers.Commands
 
         public async Task<RideAway.Domain.Entities.Ride> Handle(RequestRideCommand request, CancellationToken cancellationToken)
         {
-            var nearestDriver = request.CreateRideRequestDTO.DriverId;
+            var dto = request.CreateRideRequestDTO;
 
-            if (nearestDriver == Guid.Empty)
-            {
-                throw new InvalidOperationException("No available drivers at the moment.");
-            }
+            if (string.IsNullOrWhiteSpace(dto.PickupLocation))
+                throw new ArgumentException("A pickup location is required.");
 
-            var pickupLocation = await _geocodingService.ConvertAddressToLocationAsync(request.CreateRideRequestDTO.PickupLocation);
-            var destination = await _geocodingService.ConvertAddressToLocationAsync(request.CreateRideRequestDTO.Destination);
+            if (string.IsNullOrWhiteSpace(dto.Destination))
+                throw new ArgumentException("A destination is required.");
+
+            if (request.RiderId == Guid.Empty)
+                throw new UnauthorizedAccessException("The authenticated token does not identify a rider.");
+
+            var pickupLocation = await _geocodingService.ConvertAddressToLocationAsync(dto.PickupLocation);
+            var destination = await _geocodingService.ConvertAddressToLocationAsync(dto.Destination);
 
             if (pickupLocation is null || destination is null)
             {
@@ -42,16 +46,20 @@ namespace RideAway.Application.Features.Rides.Handlers.Commands
             var fare = await _rideMatchingService.CalculateFareAsync(
                 pickupLocation,
                 destination,
-                request.CreateRideRequestDTO.RideCategory
+                dto.RideCategory
             );
+
+            // The driver is chosen by the matching service, not supplied by the client,
+            // and the rider is always the authenticated caller.
+            Guid? driverId = dto.DriverId == Guid.Empty ? null : dto.DriverId;
 
             var ride = _rideFactory.CreateRide(
-                request.CreateRideRequestDTO.PickupLocation,
-                request.CreateRideRequestDTO.Destination,
+                dto.PickupLocation,
+                dto.Destination,
                 fare,
-                nearestDriver
+                request.RiderId,
+                driverId
             );
-
 
             await _unitOfWork.RideRepository.AddAsync(ride);
             await _unitOfWork.SaveChangesAsync();

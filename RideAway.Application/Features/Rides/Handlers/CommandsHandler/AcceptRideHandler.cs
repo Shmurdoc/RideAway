@@ -1,8 +1,7 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.Extensions.Logging;
 using RideAway.Application.Features.Rides.Commands;
 using RideAway.Application.IRepositories;
-using RideAway.Domain.Value_Object;
 using RideAway.Domain.Exceptions;
 
 namespace RideAway.Application.Features.Rides.Handlers.Commands
@@ -29,14 +28,9 @@ namespace RideAway.Application.Features.Rides.Handlers.Commands
                 throw new RideNotFoundException("Ride not found.");
             }
 
-            if (ride.Status != RideStatus.Requested)
-            {
-                _logger.LogWarning("Ride is not in a requested state. RideId: {RideId}, CurrentStatus: {Status}", request.RideId, ride.Status);
-                throw new InvalidRideStatusException("Ride has already been accepted or is not available.");
-            }
-
-            ride.DriverId = request.DriverId;
-            ride.Status = RideStatus.Accepted;
+            // Assigns the authenticated driver and enforces the Requested -> Accepted
+            // transition inside the aggregate.
+            ride.Accept(request.DriverId);
 
             await _unitOfWork.RideRepository.UpdateAsync(ride);
             await _unitOfWork.SaveChangesAsync();

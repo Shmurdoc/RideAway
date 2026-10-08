@@ -1,10 +1,8 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.Extensions.Logging;
 using RideAway.Application.Features.Rides.Commands;
 using RideAway.Application.IRepositories;
-using RideAway.Domain.Entities.Enum;
 using RideAway.Domain.Exceptions;
-using RideAway.Domain.Value_Object;
 
 namespace RideAway.Application.Features.Rides.Handlers.Commands
 {
@@ -20,7 +18,7 @@ namespace RideAway.Application.Features.Rides.Handlers.Commands
 
         public async Task<bool> Handle(CompleteRideCommand request, CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Handling CompleteRideCommand for RideId: {RideId}", request.RideId);
+            _logger.LogInformation("Handling CompleteRideCommand for RideId: {RideId}, DriverId: {DriverId}", request.RideId, request.DriverId);
 
             var ride = await _unitOfWork.RideRepository.GetByIdAsync(request.RideId);
 
@@ -30,13 +28,8 @@ namespace RideAway.Application.Features.Rides.Handlers.Commands
                 throw new RideNotFoundException("Ride not found.");
             }
 
-            if (ride.Status != RideStatus.InProgress)
-            {
-                _logger.LogWarning("Ride is not in progress. RideId: {RideId}, CurrentStatus: {Status}", request.RideId, ride.Status);
-                throw new InvalidRideStatusException("Ride cannot be completed.");
-            }
-
-            ride.Status = RideStatus.Completed;
+            // Only the assigned driver may complete, and only from InProgress.
+            ride.Complete(request.DriverId);
 
             await _unitOfWork.RideRepository.UpdateAsync(ride);
             await _unitOfWork.SaveChangesAsync();

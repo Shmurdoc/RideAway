@@ -31,7 +31,7 @@ public class GeoLocationTests
 
         // Assert
         act.Should().Throw<ArgumentException>()
-           .WithMessage("Latitude must be between -90 and 90 degrees.");
+           .WithMessage("Latitude must be a finite value between -90 and 90 degrees. (Parameter 'latitude')");
     }
 
     [Theory]
@@ -44,7 +44,27 @@ public class GeoLocationTests
 
         // Assert
         act.Should().Throw<ArgumentException>()
-           .WithMessage("Longitude must be between -180 and 180 degrees.");
+           .WithMessage("Longitude must be a finite value between -180 and 180 degrees. (Parameter 'longitude')");
+    }
+
+    [Fact]
+    public void Constructor_WithNaN_ShouldThrowArgumentException()
+    {
+        // NaN fails every comparison, so a plain range check used to let it through and
+        // the bad value would then reach the Google Maps API.
+        Action act = () => new GeoLocation(double.NaN, 0);
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void Constructor_WithInfinity_ShouldThrowArgumentException()
+    {
+        Action latitude = () => new GeoLocation(double.PositiveInfinity, 0);
+        Action longitude = () => new GeoLocation(0, double.NegativeInfinity);
+
+        latitude.Should().Throw<ArgumentException>();
+        longitude.Should().Throw<ArgumentException>();
     }
 
     [Fact]

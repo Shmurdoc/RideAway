@@ -15,7 +15,6 @@ public static class PaymentFactory
             .CustomInstantiator(f => new ProcessPaymentCommand(
                 rideId ?? f.Random.Guid(),
                 f.Random.Guid(),
-                f.Finance.Amount(50, 300),
                 f.PickRandom<PaymentMethod>()
             ))
             .Generate();

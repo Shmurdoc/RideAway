@@ -36,9 +36,8 @@ public class UpdateDriverLocationHandlerTests
         
         var command = new UpdateDriverLocationCommand(new DriverLocationUpdateDTO
         {
-            Id = driverId,
             CurrentLocation = newLocation
-        });
+        }, driverId);
 
         // Act
         var result = await handler.Handle(command, CancellationToken.None);
@@ -65,9 +64,8 @@ public class UpdateDriverLocationHandlerTests
 
         var command = new UpdateDriverLocationCommand(new DriverLocationUpdateDTO
         {
-            Id = driverId,
             CurrentLocation = "12 Mopani Avenue, Phalaborwa, Limpopo, South Africa, 1390"
-        });
+        }, driverId);
 
         // Act
         Func<Task> act = async () => await handler.Handle(command, CancellationToken.None);

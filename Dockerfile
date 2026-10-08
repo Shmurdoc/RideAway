@@ -24,7 +24,15 @@ FROM mcr.microsoft.com/dotnet/aspnet:6.0 AS runtime
 WORKDIR /app
 COPY --from=build /app/publish .
 
-ENV ASPNETCORE_URLS=http://+:80
-EXPOSE 80
+# Run unprivileged: the app never needs root, and a container escape should not start
+# from a root-owned process.
+RUN adduser --system --uid 1001 --group AppUser \
+    && chown -R AppUser:AppUser /app
+USER AppUser
+
+ENV ASPNETCORE_URLS=http://+:8080 \
+    ASPNETCORE_ENVIRONMENT=Production \
+    DOTNET_RUNNING_IN_CONTAINER=true
+EXPOSE 8080
 
 ENTRYPOINT ["dotnet", "RideAway.API.dll"]

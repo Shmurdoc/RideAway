@@ -5,163 +5,179 @@ using RideAway.Application.DTOs;
 using RideAway.Application.Features.Payments.Commands;
 using RideAway.Application.Features.Rides.Handlers.Commands;
 using RideAway.Application.IRepositories;
-using RideAway.Domain.Entities;
-using RideAway.Domain.Value_Object;
 using RideAway.Application.IServices;
+using RideAway.Domain.Entities;
 using RideAway.Domain.Entities.Enum;
-using RideAway.Tests.Moq.Factories;
-using RideAway.Tests.Moq.Mocks;
 using RideAway.Domain.Exceptions;
+using RideAway.Domain.Value_Object;
+
 namespace RideAway.Tests.Application.Features.Rides.Commands;
 
 public class ProcessPaymentCommandHandlerTests
 {
     private readonly Mock<IPaymentProcessingService> _paymentServiceMock = new();
     private readonly Mock<IUnitOfWork> _unitOfWorkMock = new();
-    private readonly Mock<ILogger<ProcessPaymentCommandHandler>> _loggerMock = new();
+    private readonly Mock<IRideRepository> _rideRepositoryMock = new();
+    private readonly Mock<IPaymentRepository> _paymentRepositoryMock = new();
     private readonly ProcessPaymentCommandHandler _handler;
+
+    private readonly Guid _riderId = Guid.NewGuid();
+    private readonly Guid _otherUserId = Guid.NewGuid();
 
     public ProcessPaymentCommandHandlerTests()
     {
-        _handler = new ProcessPaymentCommandHandler(_paymentServiceMock.Object, _unitOfWorkMock.Object, _loggerMock.Object);
-    }
-
-    [Fact]
-    public async Task Handle_WhenRideExistsAndPaymentSucceeds_ShouldReturnSuccessfulPaymentResult()
-    {
-        // Arrange
-        var ride = RideFactory.GenerateSingleRide(Guid.NewGuid(), Guid.NewGuid());
-        var command = new ProcessPaymentCommand(ride.Id, Guid.NewGuid(), 120m, PaymentMethod.card);
-        var paymentResult = PaymentFactory.GetSuccessfulPaymentResult();
-
-        var rides = new List<Ride> { ride };
-        var payments = new List<Payment>();
-
-        // Use RideRepositoryMock
-        var rideRepositoryMock = RideRepositoryMock.GetMockIRideRepository(rides);
-
-        // Use GenericRepositoryMock for Payment
-        var genericRepoMock = GenericRepositoryMock.GetMockRepository(payments);
-
-        // Cast the Generic Mock
-        var paymentRepositoryMock = genericRepoMock.As<IPaymentRepository>();
-
-        // Setup UnitOfWork to return those mocks
-        _unitOfWorkMock.Setup(u => u.RideRepository).Returns(rideRepositoryMock.Object);
-        _unitOfWorkMock.Setup(u => u.PaymentRepository).Returns(paymentRepositoryMock.Object);
+        _unitOfWorkMock.Setup(u => u.RideRepository).Returns(_rideRepositoryMock.Object);
+        _unitOfWorkMock.Setup(u => u.PaymentRepository).Returns(_paymentRepositoryMock.Object);
         _unitOfWorkMock.Setup(u => u.SaveChangesAsync()).ReturnsAsync(1);
 
-        _paymentServiceMock
-            .Setup(p => p.ProcessPaymentAsync(command.UserId, command.Amount, command.PaymentMethod))
-            .ReturnsAsync(paymentResult);
+        _handler = new ProcessPaymentCommandHandler(
+            _paymentServiceMock.Object, _unitOfWorkMock.Object,
+            Mock.Of<ILogger<ProcessPaymentCommandHandler>>());
+    }
 
-        var handler = new ProcessPaymentCommandHandler(_paymentServiceMock.Object, _unitOfWorkMock.Object, _loggerMock.Object);
-
-        // Act
-        var result = await handler.Handle(command, CancellationToken.None);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.IsSuccessful.Should().BeTrue();
-
-        _unitOfWorkMock.Verify(x => x.SaveChangesAsync(), Times.Once);
-        paymentRepositoryMock.Verify(p => p.AddAsync(It.IsAny<Payment>()), Times.Once);
-        ride.Status.Should().Be(RideStatus.Completed); // Assert the ride status update
-        payments.Should().ContainSingle();         // Assert a payment was added
-        payments[0].Amount.Should().Be(command.Amount);
+    private static Ride CompletedRide(Guid riderId, decimal fare)
+    {
+        var ride = new Ride("1 Main St", "2 Main St", fare)
+        {
+            RiderId = riderId,
+            Status = RideStatus.Completed
+        };
+        return ride;
     }
 
     [Fact]
     public async Task Handle_WhenRideDoesNotExist_ShouldThrowRideNotFoundException()
     {
-        // Arrange
-        var command = new ProcessPaymentCommand(Guid.NewGuid(), Guid.NewGuid(), 100m, PaymentMethod.card);
+        var command = new ProcessPaymentCommand(Guid.NewGuid(), _riderId, PaymentMethod.card);
+        _rideRepositoryMock.Setup(r => r.GetByIdAsync(command.RideId)).ReturnsAsync((Ride?)null);
 
-        _unitOfWorkMock.Setup(u => u.RideRepository.GetByIdAsync(command.RideId)).ReturnsAsync((Ride?)null);
-
-        var handler = new ProcessPaymentCommandHandler(_paymentServiceMock.Object, _unitOfWorkMock.Object, _loggerMock.Object);
-
-        // Act & Assert
-        await Assert.ThrowsAsync<RideNotFoundException>(() => handler.Handle(command, CancellationToken.None));
+        await Assert.ThrowsAsync<RideNotFoundException>(
+            () => _handler.Handle(command, CancellationToken.None));
     }
 
+    [Fact]
+    public async Task Handle_WhenCallerIsNotTheRider_ShouldReject()
+    {
+        var ride = CompletedRide(_otherUserId, 100m);
+        var command = new ProcessPaymentCommand(ride.Id, _riderId, PaymentMethod.cash);
+        _rideRepositoryMock.Setup(r => r.GetByIdAsync(ride.Id)).ReturnsAsync(ride);
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(
+            () => _handler.Handle(command, CancellationToken.None));
+
+        // No payment may be created for someone else's ride.
+        _paymentServiceMock.Verify(
+            p => p.CreatePaymentAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<decimal>(), It.IsAny<PaymentMethod>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WhenRideIsAlreadyPaid_ShouldRejectToPreventDoubleSettlement()
+    {
+        var ride = CompletedRide(_riderId, 100m);
+        ride.MarkAsPaid();
+        var command = new ProcessPaymentCommand(ride.Id, _riderId, PaymentMethod.card);
+        _rideRepositoryMock.Setup(r => r.GetByIdAsync(ride.Id)).ReturnsAsync(ride);
+
+        await Assert.ThrowsAsync<PaymentProcessingException>(
+            () => _handler.Handle(command, CancellationToken.None));
+    }
+
+    [Theory]
+    [InlineData(RideStatus.Requested)]
+    [InlineData(RideStatus.Accepted)]
+    [InlineData(RideStatus.InProgress)]
+    [InlineData(RideStatus.Canceled)]
+    public async Task Handle_WhenRideIsNotCompleted_ShouldReject(RideStatus status)
+    {
+        var ride = CompletedRide(_riderId, 100m);
+        ride.Status = status;
+        var command = new ProcessPaymentCommand(ride.Id, _riderId, PaymentMethod.card);
+        _rideRepositoryMock.Setup(r => r.GetByIdAsync(ride.Id)).ReturnsAsync(ride);
+
+        await Assert.ThrowsAsync<InvalidRideStatusException>(
+            () => _handler.Handle(command, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Handle_UsesTheServerComputedFare_NotAnyClientValue()
+    {
+        var ride = CompletedRide(_riderId, 250.75m);
+        var command = new ProcessPaymentCommand(ride.Id, _riderId, PaymentMethod.cash);
+        _rideRepositoryMock.Setup(r => r.GetByIdAsync(ride.Id)).ReturnsAsync(ride);
+
+        _paymentServiceMock
+            .Setup(p => p.CreatePaymentAsync(ride.Id, _riderId, 250.75m, PaymentMethod.cash))
+            .ReturnsAsync(new PaymentResultDTO { IsSuccessful = false, TransactionReference = string.Empty });
+
+        await _handler.Handle(command, CancellationToken.None);
+
+        // The amount passed to the payment service is the ride's fare, and the payee
+        // is the authenticated rider.
+        _paymentServiceMock.Verify(
+            p => p.CreatePaymentAsync(ride.Id, _riderId, 250.75m, PaymentMethod.cash),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_DoesNotMarkTheRidePaid_WhenPaymentIsOnlyPending()
+    {
+        var ride = CompletedRide(_riderId, 100m);
+        var command = new ProcessPaymentCommand(ride.Id, _riderId, PaymentMethod.cash);
+        _rideRepositoryMock.Setup(r => r.GetByIdAsync(ride.Id)).ReturnsAsync(ride);
+
+        _paymentServiceMock
+            .Setup(p => p.CreatePaymentAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<decimal>(), It.IsAny<PaymentMethod>()))
+            .ReturnsAsync(new PaymentResultDTO { IsSuccessful = false, TransactionReference = string.Empty });
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // A pending payment must not settle the ride. Settlement happens in the
+        // webhook / cash-confirmation path only.
+        result.IsSuccessful.Should().BeFalse();
+        ride.Status.Should().Be(RideStatus.Completed);
+
+        _rideRepositoryMock.Verify(r => r.UpdateAsync(It.IsAny<Ride>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WhenRideHasNoPayableFare_ShouldReject()
+    {
+        var ride = CompletedRide(_riderId, 0m);
+        var command = new ProcessPaymentCommand(ride.Id, _riderId, PaymentMethod.cash);
+        _rideRepositoryMock.Setup(r => r.GetByIdAsync(ride.Id)).ReturnsAsync(ride);
+
+        await Assert.ThrowsAsync<PaymentProcessingException>(
+            () => _handler.Handle(command, CancellationToken.None));
+    }
 
     [Fact]
     public async Task Handle_WhenPaymentServiceReturnsNull_ShouldThrowPaymentProcessingException()
     {
-        // Arrange
-        var ride = RideFactory.GenerateSingleRide(Guid.NewGuid(), Guid.NewGuid());
-        var command = new ProcessPaymentCommand(ride.Id, Guid.NewGuid(), 50m, PaymentMethod.card);
+        var ride = CompletedRide(_riderId, 50m);
+        var command = new ProcessPaymentCommand(ride.Id, _riderId, PaymentMethod.card);
+        _rideRepositoryMock.Setup(r => r.GetByIdAsync(ride.Id)).ReturnsAsync(ride);
 
-        _unitOfWorkMock.Setup(u => u.RideRepository.GetByIdAsync(command.RideId)).ReturnsAsync(ride);
-        _paymentServiceMock.Setup(p => p.ProcessPaymentAsync(command.UserId, command.Amount, command.PaymentMethod))
-                           .ReturnsAsync((PaymentResultDTO)null!);
+        _paymentServiceMock
+            .Setup(p => p.CreatePaymentAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<decimal>(), It.IsAny<PaymentMethod>()))
+            .ReturnsAsync((PaymentResultDTO)null!);
 
-        var handler = new ProcessPaymentCommandHandler(_paymentServiceMock.Object, _unitOfWorkMock.Object, _loggerMock.Object);
-
-        // Act & Assert
-        await Assert.ThrowsAsync<PaymentProcessingException>(() => handler.Handle(command, CancellationToken.None));
+        await Assert.ThrowsAsync<PaymentProcessingException>(
+            () => _handler.Handle(command, CancellationToken.None));
     }
 
-    
     [Fact]
-    public async Task Handle_WhenPaymentFails_ShouldNotSavePaymentOrUpdateRide()
+    public async Task Handle_WhenTokenCarriesNoRider_ShouldNotSettleTheRide()
     {
-        // Arrange
-        var ride = RideFactory.GenerateSingleRide(Guid.NewGuid(), Guid.NewGuid());
-        var command = new ProcessPaymentCommand(ride.Id, Guid.NewGuid(), 80m, PaymentMethod.card);
-        var failedPaymentResult = new PaymentResultDTO
-        {
-            IsSuccessful = false,
-            PaymentDate = DateTime.UtcNow,
-            TransactionReference = "FAILED123",
-            FailureReason = "Insufficient funds"
-        };
+        var ride = CompletedRide(Guid.NewGuid(), 100m);
+        var command = new ProcessPaymentCommand(ride.Id, Guid.Empty, PaymentMethod.cash);
+        _rideRepositoryMock.Setup(r => r.GetByIdAsync(ride.Id)).ReturnsAsync(ride);
 
-        _unitOfWorkMock.Setup(u => u.RideRepository.GetByIdAsync(command.RideId)).ReturnsAsync((Ride?)ride);
-        _paymentServiceMock.Setup(p => p.ProcessPaymentAsync(command.UserId, command.Amount, command.PaymentMethod))
-                           .ReturnsAsync(failedPaymentResult);
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(
+            () => _handler.Handle(command, CancellationToken.None));
 
-        var handler = new ProcessPaymentCommandHandler(_paymentServiceMock.Object, _unitOfWorkMock.Object, _loggerMock.Object);
-
-        // Act
-        var result = await handler.Handle(command, CancellationToken.None);
-
-        // Assert
-        result.IsSuccessful.Should().BeFalse();
-        _unitOfWorkMock.Verify(u => u.PaymentRepository.AddAsync(It.IsAny<Payment>()), Times.Never);
-        _unitOfWorkMock.Verify(u => u.RideRepository.UpdateAsync(It.IsAny<Ride>()), Times.Never);
-        _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Never);
+        _paymentServiceMock.Verify(
+            p => p.CreatePaymentAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<decimal>(), It.IsAny<PaymentMethod>()),
+            Times.Never);
     }
-    [Fact]
-    public async Task Handle_WhenPaymentSucceeds_ShouldCallUpdateRideWithPaidStatus()
-    {
-        // Arrange
-        var ride = RideFactory.GenerateSingleRide(Guid.NewGuid(), Guid.NewGuid());
-        var command = new ProcessPaymentCommand(ride.Id, Guid.NewGuid(), 120m, PaymentMethod.card);
-        var paymentResult = PaymentFactory.GetSuccessfulPaymentResult();
-
-        // Create ride repo mock first
-        var rideRepositoryMock = new Mock<IRideRepository>();
-        rideRepositoryMock.Setup(r => r.GetByIdAsync(command.RideId)).ReturnsAsync(ride);
-
-        _unitOfWorkMock.Setup(u => u.RideRepository).Returns(rideRepositoryMock.Object);
-        _unitOfWorkMock.Setup(u => u.PaymentRepository).Returns(new Mock<IPaymentRepository>().Object);
-        _unitOfWorkMock.Setup(u => u.SaveChangesAsync()).ReturnsAsync(1);
-
-        _paymentServiceMock.Setup(p => p.ProcessPaymentAsync(command.UserId, command.Amount, command.PaymentMethod))
-                           .ReturnsAsync(paymentResult);
-
-        var handler = new ProcessPaymentCommandHandler(_paymentServiceMock.Object, _unitOfWorkMock.Object, _loggerMock.Object);
-
-        // Act
-        var result = await handler.Handle(command, CancellationToken.None);
-
-        // Assert
-        rideRepositoryMock.Verify(r => r.UpdateAsync(It.Is<Ride>(r => r.Status == RideStatus.Completed)), Times.Once);
-    }
-
-
-
-
 }

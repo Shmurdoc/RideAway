@@ -68,14 +68,22 @@ namespace RideAway.Infrastructure.DependencyInjection
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
                 {
+                    // Keep the claim types exactly as issued. With the default inbound
+                    // mapping enabled, "role" is rewritten to the long ClaimTypes.Role
+                    // URI, which silently broke every [Authorize(Roles = ...)] check.
+                    options.MapInboundClaims = false;
+
                     options.TokenValidationParameters = new TokenValidationParameters
                     {
                         ValidateIssuer = true,
-                        ValidateAudience = false,
+                        ValidateAudience = true,
                         ValidateLifetime = true,
                         ValidateIssuerSigningKey = true,
+                        ClockSkew = TimeSpan.FromMinutes(1),
                         ValidIssuer = configuration["Jwt:Issuer"],
+                        ValidAudience = configuration["Jwt:Audience"],
                         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+                        NameClaimType = "email",
                         RoleClaimType = "role"
                     };
                 });

@@ -1,11 +1,9 @@
-﻿using MediatR;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using MediatR;
 
 namespace RideAway.Application.Features.Rides.Commands
 {
-    public record CompleteRideCommand(Guid RideId) : IRequest<bool>;
+    /// <summary>
+    /// The driver is the authenticated caller, not a client-supplied value.
+    /// </summary>
+    public record CompleteRideCommand(Guid RideId, Guid DriverId) : IRequest<bool>;
 }

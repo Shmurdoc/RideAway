@@ -41,7 +41,7 @@ public class CompleteRideHandlerTests
         var mockLogger = new Mock<ILogger<CompleteRideHandler>>();
 
         var handler = new CompleteRideHandler(mockUnitOfWork.Object, mockLogger.Object);
-        var command = new CompleteRideCommand(ride.Id);
+        var command = new CompleteRideCommand(ride.Id, ride.DriverId!.Value);
 
         // Act
         var result = await handler.Handle(command, CancellationToken.None);
@@ -80,7 +80,7 @@ public class CompleteRideHandlerTests
 
         var handler = new CompleteRideHandler(unitOfWorkMock.Object, Mock.Of<ILogger<CompleteRideHandler>>());
 
-        var command = new CompleteRideCommand(rideIdThatDoesNotExist);
+        var command = new CompleteRideCommand(rideIdThatDoesNotExist, Guid.NewGuid());
 
         // Act
         Func<Task> act = async () => await handler.Handle(command, CancellationToken.None);
@@ -106,12 +106,12 @@ public class CompleteRideHandlerTests
         unitOfWork.Setup(u => u.RideRepository).Returns(repoMock.Object);
 
         var handler = new CompleteRideHandler(unitOfWork.Object, Mock.Of<ILogger<CompleteRideHandler>>());
-        var command = new CompleteRideCommand(ride.Id);
+        var command = new CompleteRideCommand(ride.Id, Guid.NewGuid());
 
         // Act
         Func<Task> act = async () => await handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await act.Should().ThrowAsync<InvalidRideStatusException>().WithMessage("Ride cannot be completed.");
+        await act.Should().ThrowAsync<InvalidRideStatusException>().WithMessage("A ride cannot be completed while it is Requested.");
     }
 }

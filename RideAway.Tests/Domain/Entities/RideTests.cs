@@ -65,16 +65,63 @@ namespace RideAway.Tests.Domain.Entities
         }
 
         [Fact]
-        public void MarkAsPaid_ShouldSetStatusToCompleted()
+        public void MarkAsPaid_ShouldSetStatusToPaid_WhenRideIsCompleted()
         {
             // Arrange
-            var ride = new Ride("Pickup", "Destination", 100);
+            var ride = new Ride("Pickup", "Destination", 100) { Status = RideStatus.Completed };
 
             // Act
             ride.MarkAsPaid();
 
             // Assert
-            ride.Status.Should().Be(RideStatus.Completed);
+            ride.Status.Should().Be(RideStatus.Paid);
+        }
+
+        [Fact]
+        public void MarkAsPaid_ShouldThrow_WhenRideIsNotCompleted()
+        {
+            // A cancelled or in-flight ride must never be settleable.
+            var ride = new Ride("Pickup", "Destination", 100) { Status = RideStatus.Canceled };
+
+            ride.Invoking(r => r.MarkAsPaid())
+                .Should().Throw<RideAway.Domain.Exceptions.InvalidRideStatusException>();
+        }
+
+        [Fact]
+        public void MarkAsPaid_ShouldThrow_WhenRideIsAlreadyPaid()
+        {
+            // Guards against a replayed payment request settling the same ride twice.
+            var ride = new Ride("Pickup", "Destination", 100) { Status = RideStatus.Completed };
+            ride.MarkAsPaid();
+
+            ride.Invoking(r => r.MarkAsPaid())
+                .Should().Throw<RideAway.Domain.Exceptions.PaymentProcessingException>();
+        }
+
+        [Fact]
+        public void Cancel_ShouldThrow_WhenCallerIsNeitherRiderNorDriver()
+        {
+            var rider = Guid.NewGuid();
+            var driver = Guid.NewGuid();
+            var stranger = Guid.NewGuid();
+            var ride = new Ride("Pickup", "Destination", 100) { RiderId = rider, DriverId = driver };
+
+            ride.Invoking(r => r.Cancel(stranger))
+                .Should().Throw<UnauthorizedAccessException>();
+        }
+
+        [Fact]
+        public void Complete_ShouldThrow_WhenCallerIsNotTheAssignedDriver()
+        {
+            var ride = new Ride("Pickup", "Destination", 100)
+            {
+                RiderId = Guid.NewGuid(),
+                DriverId = Guid.NewGuid(),
+                Status = RideStatus.InProgress
+            };
+
+            ride.Invoking(r => r.Complete(Guid.NewGuid()))
+                .Should().Throw<UnauthorizedAccessException>();
         }
 
     }

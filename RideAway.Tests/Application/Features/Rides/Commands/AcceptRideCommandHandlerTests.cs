@@ -95,7 +95,7 @@ namespace RideAway.Tests.Application.Features.Rides.Commands
 
             // Assert
             await act.Should().ThrowAsync<InvalidRideStatusException>()
-                .WithMessage("Ride has already been accepted or is not available.");
+                .WithMessage("A ride cannot be accepted while it is Accepted.");
 
             _unitOfWorkMock.Verify(u => u.SaveChangesAsync(), Times.Never);
         }

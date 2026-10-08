@@ -90,6 +90,6 @@ public class CollectRiderHandlerTests
 
         // Assert
         await act.Should().ThrowAsync<RideNotFoundException>()
-                 .WithMessage("Ride not found or driver is not assigned to this ride.");
+                 .WithMessage("Ride not found.");
     }
 }

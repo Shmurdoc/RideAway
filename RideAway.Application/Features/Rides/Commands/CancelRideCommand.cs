@@ -1,11 +1,10 @@
-﻿using MediatR;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using MediatR;
 
 namespace RideAway.Application.Features.Rides.Commands
 {
-    public record CancelRideCommand(Guid RideId) : IRequest<bool>;
+    /// <summary>
+    /// <paramref name="RequesterId"/> is the authenticated caller, who must be the
+    /// rider or the assigned driver of the ride.
+    /// </summary>
+    public record CancelRideCommand(Guid RideId, Guid RequesterId) : IRequest<bool>;
 }

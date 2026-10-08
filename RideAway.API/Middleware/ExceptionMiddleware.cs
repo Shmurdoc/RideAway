@@ -38,18 +38,22 @@ public class ExceptionMiddleware
 
     private static async Task HandleExceptionAsync(HttpContext context, Exception ex)
     {
+        // Only exceptions we own get a hand-written, constant message. Broad framework
+        // exceptions (ArgumentException, InvalidOperationException, KeyNotFoundException)
+        // are thrown from many places and quote argument names and internal values, so
+        // their message is logged but never reflected to the caller.
         var (statusCode, message) = ex switch
         {
             RideNotFoundException => (HttpStatusCode.NotFound, "Ride not found."),
             InvalidRideStatusException => (HttpStatusCode.BadRequest, ex.Message),
             RideAlreadyCompletedException => (HttpStatusCode.BadRequest, "Ride is already completed."),
-            PaymentProcessingException => (HttpStatusCode.InternalServerError, "Payment processing encountered an error."),
+            PaymentProcessingException => (HttpStatusCode.BadRequest, ex.Message),
             InvalidGeoLocationException => (HttpStatusCode.BadRequest, ex.Message),
             InvalidCredentialsException => (HttpStatusCode.Unauthorized, "Invalid email or password."),
-            InvalidOperationException => (HttpStatusCode.BadRequest, ex.Message),
-            KeyNotFoundException => (HttpStatusCode.NotFound, ex.Message),
             UnauthorizedAccessException => (HttpStatusCode.Forbidden, "You are not authorized to perform this action."),
-            ArgumentException => (HttpStatusCode.BadRequest, ex.Message),
+            ArgumentException => (HttpStatusCode.BadRequest, "The request contains an invalid value."),
+            InvalidOperationException => (HttpStatusCode.BadRequest, "The request could not be completed."),
+            KeyNotFoundException => (HttpStatusCode.NotFound, "The requested resource was not found."),
             System.Data.Common.DbException => (HttpStatusCode.ServiceUnavailable, "The database is currently unavailable. Please try again later."),
             _ => (HttpStatusCode.InternalServerError, "An unexpected error occurred. Please try again later.")
         };

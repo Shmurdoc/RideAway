@@ -23,7 +23,6 @@ namespace RideAway.Tests.Moq
                 .CustomInstantiator(f => new ProcessPaymentCommand(
                     rideId ?? Guid.NewGuid(),
                     f.Random.Guid(),
-                    f.Finance.Amount(50, 300),
                     f.PickRandom<PaymentMethod>()
                 ));
 

@@ -1,18 +1,19 @@
-﻿using MediatR;
-using Microsoft.Extensions.Logging;
+﻿using System.Security.Claims;
+using MediatR;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
 using RideAway.API.Controllers;
-using RideAway.Application.Features.Rides.Commands;
-using RideAway.Application.Features.Payments.Commands;
-using RideAway.Application.Features.Rides.Queries;
 using RideAway.Application.DTOs;
+using RideAway.Application.Features.Payments.Commands;
+using RideAway.Application.Features.Rides.Commands;
+using RideAway.Application.Features.Rides.Queries;
+using RideAway.Domain.Entities;
 using RideAway.Domain.Entities.Enum;
 using RideAway.Domain.Exceptions;
-using RideAway.Domain.Entities;
-using RideAway.Tests.Moq.Factories;
 using RideAway.Tests.Moq;
+using RideAway.Tests.Moq.Factories;
 using Moq;
-using Newtonsoft.Json;
 using FluentAssertions;
 
 namespace RideAway.Tests.API.Controllers;
@@ -21,43 +22,102 @@ public class UserControllerTests
 {
     private readonly Mock<IMediator> _mediatorMock = new();
     private readonly UserController _controller;
+    private readonly Guid _callerId = Guid.NewGuid();
 
     public UserControllerTests()
     {
         _controller = new UserController(_mediatorMock.Object);
+        AuthenticateAs(_callerId, UserRole.Rider);
+    }
+
+    /// <summary>
+    /// Controllers resolve the caller from the token, so every test needs a principal.
+    /// </summary>
+    private void AuthenticateAs(Guid userId, UserRole role)
+    {
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(new[]
+        {
+            new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
+            new Claim(ClaimTypes.Role, role.ToString())
+        }, "TestAuth"));
+
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = principal }
+        };
     }
 
     [Fact]
-    public async Task CreateUser_ReturnsOk_WhenUserCreated()
+    public async Task CreateUser_ReturnsProfileWithoutPasswordHash()
     {
         var userDto = UserFactory.GenerateUserDTO(UserRole.Driver);
         var command = new CreateUserCommand(userDto);
 
-        var expectedUser = new User { Name = userDto.Name, Role = userDto.Role };
-
-        _mediatorMock.Setup(m => m.Send(It.Is<CreateUserCommand>(c =>
-            c.createUserDTO.Name == userDto.Name && c.createUserDTO.Role == userDto.Role), default))
-            .ReturnsAsync(expectedUser);
+        _mediatorMock.Setup(m => m.Send(It.IsAny<CreateUserCommand>(), default))
+            .ReturnsAsync(new UserProfileDTO
+            {
+                Id = Guid.NewGuid(),
+                Name = userDto.Name,
+                Email = userDto.Email,
+                Role = UserRole.Driver
+            });
 
         var result = await _controller.CreateUser(command);
 
         var okResult = Assert.IsType<OkObjectResult>(result);
-        var returnedUser = Assert.IsType<User>(okResult.Value);
-        Assert.Equal(expectedUser.Name, returnedUser.Name);
-        Assert.Equal(expectedUser.Role, returnedUser.Role);
+        var returned = Assert.IsType<UserProfileDTO>(okResult.Value);
+
+        // The response must never carry credential material.
+        var serialized = JsonConvert.SerializeObject(okResult.Value);
+        serialized.Should().NotContain("PasswordHash");
+        returned.Email.Should().Be(userDto.Email);
     }
 
     [Fact]
     public async Task GetUserById_ReturnsNotFound_WhenUserIsNull()
     {
-        var userId = Guid.NewGuid();
+        var userId = _callerId;
 
         _mediatorMock.Setup(m => m.Send(It.Is<GetUserByIdQuery>(q => q.Id == userId), default))
-                     .ReturnsAsync((User?)null);
+                     .ReturnsAsync((UserProfileDTO?)null);
 
         var result = await _controller.GetUserById(userId);
 
         Assert.IsType<NotFoundObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task GetUserById_PassesAuthenticatedCaller_NotTheRouteId()
+    {
+        var routeId = Guid.NewGuid();
+        GetUserByIdQuery? captured = null;
+
+        _mediatorMock.Setup(m => m.Send(It.IsAny<GetUserByIdQuery>(), default))
+            .Callback<IRequest<UserProfileDTO>, CancellationToken>((req, _) => captured = (GetUserByIdQuery)req)
+            .ReturnsAsync((UserProfileDTO?)null);
+
+        await _controller.GetUserById(routeId);
+
+        // The handler must learn who is asking, so it can refuse cross-user reads.
+        captured.Should().NotBeNull();
+        captured!.RequesterId.Should().Be(_callerId);
+        captured.Id.Should().Be(routeId);
+        captured.RequesterIsAdmin.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task GetUserById_MarksAdminCaller_SoAdminsCanReadOthers()
+    {
+        AuthenticateAs(Guid.NewGuid(), UserRole.Admin);
+        GetUserByIdQuery? captured = null;
+
+        _mediatorMock.Setup(m => m.Send(It.IsAny<GetUserByIdQuery>(), default))
+            .Callback<IRequest<UserProfileDTO>, CancellationToken>((req, _) => captured = (GetUserByIdQuery)req)
+            .ReturnsAsync((UserProfileDTO?)null);
+
+        await _controller.GetUserById(Guid.NewGuid());
+
+        captured!.RequesterIsAdmin.Should().BeTrue();
     }
 
     [Fact]
@@ -83,95 +143,79 @@ public class UserControllerTests
     }
 
     [Fact]
-    public async Task CancelRide_ReturnsOk_WhenSuccess()
+    public async Task CancelRide_UsesAuthenticatedCallerAsRequester()
     {
-        // Arrange
         var rideId = Guid.NewGuid();
-        var command = new CancelRideCommand(rideId);
+        var command = new CancelRideCommand(rideId, Guid.Empty);
+        CancelRideCommand? captured = null;
 
-        _mediatorMock.Setup(m => m.Send(command, default)).ReturnsAsync(true);
+        _mediatorMock.Setup(m => m.Send(It.IsAny<CancelRideCommand>(), default))
+            .Callback<IRequest<bool>, CancellationToken>((req, _) => captured = (CancelRideCommand)req)
+            .ReturnsAsync(true);
 
-        // Act
         var result = await _controller.CancelRide(command);
 
-        // Assert
-        var okResult = Assert.IsType<OkObjectResult>(result);
-
-        // Convert the anonymous object to a dictionary using serialization
-        var serialized = JsonConvert.SerializeObject(okResult.Value);
-        var response = JsonConvert.DeserializeObject<Dictionary<string, string>>(serialized);
-
-        Assert.Equal("Ride canceled successfully.", response!["Message"]);
+        Assert.IsType<OkObjectResult>(result);
+        captured!.RequesterId.Should().Be(_callerId);
     }
 
     [Fact]
     public async Task CancelRide_ReturnsNotFound_WhenRideNotFound()
     {
-        // Arrange
-        var rideId = Guid.NewGuid();
-        var command = new CancelRideCommand(rideId);
+        var command = new CancelRideCommand(Guid.NewGuid(), Guid.Empty);
 
         _mediatorMock.Setup(m => m.Send(It.IsAny<CancelRideCommand>(), default))
             .ThrowsAsync(new RideNotFoundException("Ride not found."));
 
-        // Act & Assert
         await Assert.ThrowsAsync<RideNotFoundException>(() => _controller.CancelRide(command));
     }
-
-
-
 
     [Fact]
     public async Task CancelRide_ReturnsBadRequest_WhenRideAlreadyCompleted()
     {
-        // Arrange
-        var rideId = Guid.NewGuid();
-        var command = new CancelRideCommand(rideId);
+        var command = new CancelRideCommand(Guid.NewGuid(), Guid.Empty);
 
         _mediatorMock.Setup(m => m.Send(It.IsAny<CancelRideCommand>(), default))
             .ThrowsAsync(new InvalidRideStatusException("Ride has already been completed and cannot be canceled."));
 
-        // Act & Assert
         await Assert.ThrowsAsync<InvalidRideStatusException>(() => _controller.CancelRide(command));
     }
 
+    [Fact]
+    public async Task ProcessPayment_UsesAuthenticatedCaller_AndSendsNoAmount()
+    {
+        var command = new ProcessPaymentCommand(Guid.NewGuid(), Guid.Empty, PaymentMethod.cash);
+        ProcessPaymentCommand? captured = null;
+
+        _mediatorMock.Setup(m => m.Send(It.IsAny<ProcessPaymentCommand>(), default))
+            .Callback<IRequest<PaymentResultDTO>, CancellationToken>((req, _) => captured = (ProcessPaymentCommand)req)
+            .ReturnsAsync(new PaymentResultDTO { IsSuccessful = false, TransactionReference = "cs_test_123" });
+
+        var result = await _controller.ProcessPayment(command);
+
+        Assert.IsType<OkObjectResult>(result);
+        captured!.RiderId.Should().Be(_callerId);
+
+        // There is no client-supplied amount anywhere in the command any more.
+        typeof(ProcessPaymentCommand).GetProperties()
+            .Should().NotContain(p => p.Name == "Amount");
+        typeof(ProcessPaymentCommand).GetProperties()
+            .Should().NotContain(p => p.Name == "UserId");
+    }
 
     [Fact]
-    public async Task ProcessPayment_ReturnsOkResult_WhenPaymentIsSuccessful()
+    public async Task ProcessPayment_ReportsPending_NotSuccess()
     {
-        var ride = MockPaymentRepository.GetFakeRide();
-        var fakeCommand = MockPaymentRepository.GetFakeCommand(rideId: ride.Id);
+        var command = new ProcessPaymentCommand(Guid.NewGuid(), Guid.Empty, PaymentMethod.cash);
 
-        var command = new ProcessPaymentCommand(
-            fakeCommand.RideId,
-            fakeCommand.UserId,
-            fakeCommand.Amount,
-            fakeCommand.PaymentMethod
-        );
-
-        var paymentResult = new PaymentResultDTO
-        {
-            IsSuccessful = true,
-            TransactionReference = Guid.NewGuid().ToString(),
-            PaymentDate = DateTime.UtcNow
-        };
-
-        _mediatorMock
-            .Setup(m => m.Send(It.Is<ProcessPaymentCommand>(c =>
-                c.RideId == command.RideId &&
-                c.UserId == command.UserId &&
-                c.Amount == command.Amount &&
-                c.PaymentMethod == command.PaymentMethod
-            ), default))
-            .ReturnsAsync(paymentResult);
+        _mediatorMock.Setup(m => m.Send(It.IsAny<ProcessPaymentCommand>(), default))
+            .ReturnsAsync(new PaymentResultDTO { IsSuccessful = false, TransactionReference = string.Empty });
 
         var result = await _controller.ProcessPayment(command);
 
         var okResult = Assert.IsType<OkObjectResult>(result);
-        var returnedDto = Assert.IsType<PaymentResultDTO>(okResult.Value);
-
-        Assert.True(returnedDto.IsSuccessful);
-        Assert.Equal(paymentResult.TransactionReference, returnedDto.TransactionReference);
+        var json = JsonConvert.SerializeObject(okResult.Value);
+        json.Should().Contain("pending");
     }
 
     [Fact]
@@ -184,22 +228,18 @@ public class UserControllerTests
     }
 
     [Fact]
-    public async Task RequestRide_ReturnsOk_WhenSuccessful()
+    public async Task RequestRide_RecordsAuthenticatedCallerAsRider()
     {
         var dto = RideFactory.GenerateRideRequestDTO();
-        var expectedRide = RideFactory.GenerateRideAlias();
+        RequestRideCommand? captured = null;
 
         _mediatorMock
             .Setup(m => m.Send(It.IsAny<RequestRideCommand>(), default))
-            .ReturnsAsync(expectedRide);
+            .Callback<IRequest<Ride>, CancellationToken>((req, _) => captured = (RequestRideCommand)req)
+            .ReturnsAsync(RideFactory.GenerateRideAlias());
 
-        var result = await _controller.RequestRide(dto);
+        await _controller.RequestRide(dto);
 
-        var okResult = Assert.IsType<OkObjectResult>(result);
-        var returnedRide = Assert.IsType<Ride>(okResult.Value);
-        Assert.Equal(expectedRide.DriverId, returnedRide.DriverId);
-        Assert.Equal(expectedRide.PickupLocation, returnedRide.PickupLocation);
-        Assert.Equal(expectedRide.Destination, returnedRide.Destination);
-        Assert.Equal(expectedRide.RiderCategory, returnedRide.RiderCategory);
+        captured!.RiderId.Should().Be(_callerId);
     }
 }

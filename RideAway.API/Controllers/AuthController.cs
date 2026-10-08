@@ -12,7 +12,6 @@ namespace RideAway.API.Controllers
     /// </summary>
     [Route("api/auth")]
     [ApiController]
-    [AllowAnonymous]
     public class AuthController : ControllerBase
     {
         private readonly IMediator _mediator;
@@ -30,6 +29,7 @@ namespace RideAway.API.Controllers
         /// <param name="command">The login credentials.</param>
         /// <returns>A token with the user's id, name, and role, or a 401 if the credentials are invalid.</returns>
         [HttpPost("login")]
+        [AllowAnonymous]
         public async Task<IActionResult> Login([FromBody] LoginCommand command)
         {
             if (command == null)

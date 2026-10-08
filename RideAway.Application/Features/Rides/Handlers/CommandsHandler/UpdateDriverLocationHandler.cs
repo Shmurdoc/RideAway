@@ -1,7 +1,6 @@
-﻿using MediatR;
+using MediatR;
 using RideAway.Application.Features.Rides.Commands;
 using RideAway.Application.IRepositories;
-using RideAway.Domain.Entities;
 using RideAway.Domain.Exceptions;
 
 namespace RideAway.Application.Features.Rides.Handlers.Commands
@@ -17,10 +16,18 @@ namespace RideAway.Application.Features.Rides.Handlers.Commands
 
         public async Task<bool> Handle(UpdateDriverLocationCommand request, CancellationToken cancellationToken)
         {
-            var driver = await _unitOfWork.UserRepository.GetByIdAsync(request.driverLocationUpdateDTO.Id);
+            // The driver being updated is always the authenticated caller, so a driver
+            // can only move their own location.
+            var driver = await _unitOfWork.UserRepository.GetByIdAsync(request.DriverId);
 
             if (driver == null)
                 throw new KeyNotFoundException("Driver not found.");
+
+            if (driver.Role != RideAway.Domain.Entities.Enum.UserRole.Driver)
+                throw new UnauthorizedAccessException("Only drivers can report a location.");
+
+            if (string.IsNullOrWhiteSpace(request.driverLocationUpdateDTO.CurrentLocation))
+                throw new ArgumentException("A location is required.");
 
             driver.CurrentLocation = request.driverLocationUpdateDTO.CurrentLocation;
 

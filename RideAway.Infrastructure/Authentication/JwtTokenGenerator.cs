@@ -37,9 +37,10 @@ namespace RideAway.Infrastructure.Authentication
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var token = new JwtSecurityToken(
-                _config["Jwt:Issuer"],
-                _config["Jwt:Issuer"],
-                claims,
+                issuer: _config["Jwt:Issuer"],
+                audience: _config["Jwt:Audience"],
+                claims: claims,
+                notBefore: DateTime.UtcNow,
                 expires: DateTime.UtcNow.AddHours(2),
                 signingCredentials: creds);
 

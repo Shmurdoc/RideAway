@@ -1,6 +1,7 @@
 ﻿using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using RideAway.API.Extensions;
 using RideAway.Application.DTOs;
 using RideAway.Application.Features.Payments.Commands;
 using RideAway.Application.Features.Rides.Commands;
@@ -35,14 +36,18 @@ public class UserController : ControllerBase
     }
 
     /// <summary>
-    /// Gets a user by id.
+    /// Gets the profile of the authenticated caller. Only an administrator may read
+    /// another user's profile.
     /// </summary>
-    /// <param name="id">The user id.</param>
-    /// <returns>The user, or 404 if no user matches the id.</returns>
+    /// <param name="id">The user id. Must match the caller unless the caller is an admin.</param>
+    /// <returns>The user profile, 403 if the caller may not read it, or 404 if no user matches.</returns>
     [HttpGet("{id}")]
     public async Task<IActionResult> GetUserById(Guid id)
     {
-        var user = await _mediator.Send(new GetUserByIdQuery(id));
+        var requesterId = User.GetUserId();
+        var isAdmin = User.IsInUserRole(nameof(UserRole.Admin));
+
+        var user = await _mediator.Send(new GetUserByIdQuery(id, requesterId, isAdmin));
         return user is not null ? Ok(user) : NotFound("User not found");
     }
 
@@ -71,7 +76,8 @@ public class UserController : ControllerBase
         if (command == null)
             return BadRequest(new { Message = "Invalid request. Command cannot be null." });
 
-        var result = await _mediator.Send(command);
+        // The requester is the authenticated caller, never a body-supplied id.
+        var result = await _mediator.Send(command with { RequesterId = User.GetUserId() });
 
         return result
             ? Ok(new { Message = "Ride canceled successfully." })
@@ -89,11 +95,20 @@ public class UserController : ControllerBase
         if (command == null)
             return BadRequest(new { Message = "Invalid request. Command cannot be null." });
 
-        var result = await _mediator.Send(command);
+        // The payer is the authenticated caller; the amount comes from the ride's fare.
+        var result = await _mediator.Send(command with { RiderId = User.GetUserId() });
 
-        return result.IsSuccessful
-            ? Ok(result)
-            : BadRequest(new { Message = "Payment failed.", Reason = result.FailureReason });
+        // A pending payment is a success from the caller's point of view: the ride is
+        // settled once the payment is confirmed, not before.
+        return Ok(new
+        {
+            Message = result.TransactionReference.Length > 0
+                ? "Payment initiated. The ride will be marked paid once payment is confirmed."
+                : "Payment recorded as pending confirmation.",
+            result.TransactionReference,
+            result.PaymentDate,
+            result.FailureReason
+        });
     }
 
     /// <summary>
@@ -107,7 +122,8 @@ public class UserController : ControllerBase
         if (dto == null)
             return BadRequest("Ride request cannot be null.");
 
-        var command = new RequestRideCommand(dto);
+        // The rider is the authenticated caller.
+        var command = new RequestRideCommand(dto, User.GetUserId());
         var ride = await _mediator.Send(command);
         return Ok(ride);
     }

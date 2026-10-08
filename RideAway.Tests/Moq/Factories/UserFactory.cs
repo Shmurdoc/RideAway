@@ -39,11 +39,11 @@ namespace RideAway.Tests.Moq.Factories
         public static User GenerateDriver()
         {
             var faker = new Faker<User>()
+                .RuleFor(x => x.Role, _ => UserRole.Driver)
                 .RuleFor(x => x.Id, f => f.Random.Guid())
                 .RuleFor(x => x.Name, f => f.Name.FullName())
                 .RuleFor(x => x.Email, f => f.Internet.Email())
                 .RuleFor(x => x.PhoneNumber, f => f.Phone.PhoneNumber())
-                .RuleFor(x => x.Role, f => f.PickRandom<UserRole>())
                 .RuleFor(x => x.Vehicle, f => new Vehicle
                 {
                     DriverId = f.Random.Guid(),
@@ -63,7 +63,6 @@ namespace RideAway.Tests.Moq.Factories
                 .RuleFor(x => x.Name, f => f.Name.FullName())
                 .RuleFor(x => x.Email, f => f.Internet.Email())
                 .RuleFor(x => x.PhoneNumber, f => f.Phone.PhoneNumber())
-                .RuleFor(x => x.Role, f => f.PickRandom<UserRole>())
                 .RuleFor(x => x.Vehicle, f => new Vehicle
                 {
                     DriverId = f.Random.Guid(),

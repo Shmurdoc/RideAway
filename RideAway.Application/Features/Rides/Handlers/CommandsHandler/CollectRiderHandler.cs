@@ -34,17 +34,15 @@ namespace RideAway.Application.Features.Rides.Handlers.Commands
 
             var ride = await _unitOfWork.RideRepository.GetByIdAsync(request.RideId);
 
-            if (ride == null || ride.DriverId != request.DriverId)
+            if (ride == null)
             {
-                _logger.LogWarning("Invalid ride or driver mismatch. RideId: {RideId}, DriverId: {DriverId}", request.RideId, request.DriverId);
-                throw new RideNotFoundException("Ride not found or driver is not assigned to this ride.");
+                _logger.LogWarning("Ride not found. RideId: {RideId}", request.RideId);
+                throw new RideNotFoundException("Ride not found.");
             }
 
-            if (ride.Status != RideStatus.Accepted)
-            {
-                _logger.LogWarning("Invalid ride status for collection. RideId: {RideId}, CurrentStatus: {Status}", request.RideId, ride.Status);
-                throw new InvalidRideStatusException("Ride must be in 'Accepted' state before collecting the rider.");
-            }
+            // The aggregate verifies the caller is the assigned driver and that the
+            // ride is in the Accepted state.
+            ride.StartTrip(request.DriverId);
 
             if (ride.Driver == null || string.IsNullOrEmpty(ride.Driver.CurrentLocation))
             {
@@ -62,9 +60,9 @@ namespace RideAway.Application.Features.Rides.Handlers.Commands
             }
 
             var route = await _googleMapsApi.GetRouteAsync(currentLocation, pickupLocation);
-            _logger.LogInformation("Driver navigation route: {Route}", route);
+            _logger.LogDebug("Driver navigation route computed for ride {RideId}", request.RideId);
 
-            ride.Status = RideStatus.InProgress;
+            await _unitOfWork.RideRepository.UpdateAsync(ride);
             await _unitOfWork.SaveChangesAsync();
 
             _logger.LogInformation("Rider collected successfully. RideId: {RideId}", request.RideId);
