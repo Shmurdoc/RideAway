@@ -188,6 +188,9 @@ dotnet test RideAway.Tests/RideAway.Tests.csproj --nologo
 
 Zero warnings; 82 tests. `global.json` pins the SDK so local builds match CI.
 
+Every push is scanned for secrets (gitleaks, CI `secret-scan` job). To get the same
+check before committing, install the hook once: `pre-commit install`.
+
 ## Known Limitations
 
 **Action required:** a Google Maps API key (`AIzaSyDud...`) and an internal hostname were

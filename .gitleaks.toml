@@ -1,0 +1,13 @@
+title = "RideAway secret scan"
+
+[extend]
+useDefault = true
+
+# These strings look secret-shaped but are safe to commit. Everything else that
+# matches a rule fails the scan.
+[allowlist]
+description = "Committed placeholders, not secrets"
+regexes = [
+  '''RideAway-Dev-Signing-Key-Change-In-Production-12345''',
+  '''P@ssw0rd!LongEnough''',
+]
