@@ -13,13 +13,6 @@ namespace RideAway.Infrastructure.Mappers
     {
         public PaymentProfile()
         {
-            // From CreatePaymentRequest to Payment Entity
-            CreateMap<CreatePaymentRequestDTO, Payment>();
-
-            // From Payment Entity to DTO
-            CreateMap<Payment, PaymentDTO>();
-
-           
         }
     }
 }

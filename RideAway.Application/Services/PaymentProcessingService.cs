@@ -30,9 +30,9 @@ namespace RideAway.Application.Services
         }
 
         /// <summary>
-        /// Creates the single pending payment record for a ride. Nothing is marked
-        /// successful here - settlement happens later via <see cref="ConfirmPaymentAsync"/>
-        /// (Stripe webhook) or <see cref="ConfirmCashCollectionAsync"/> (driver confirms).
+        /// Creates the single pending payment for a ride. Settlement happens later:
+        /// <see cref="ConfirmPaymentAsync"/> (Stripe webhook) or
+        /// <see cref="ConfirmCashCollectionAsync"/> (driver confirms cash).
         /// </summary>
         public async Task<PaymentResultDTO> CreatePaymentAsync(Guid rideId, Guid userId, decimal amount, PaymentMethod method)
         {
@@ -79,10 +79,7 @@ namespace RideAway.Application.Services
             };
         }
 
-        /// <summary>
-        /// Settles a payment from a verified Stripe webhook event. This is the only
-        /// path by which a card payment becomes successful.
-        /// </summary>
+        /// <summary>Settles a payment from a verified Stripe webhook event.</summary>
         public async Task ConfirmPaymentAsync(string transactionReference, decimal verifiedAmount, string currency)
         {
             var payment = await _unitOfWork.PaymentRepository
@@ -97,8 +94,7 @@ namespace RideAway.Application.Services
             if (payment.Status == PaymentStatus.Completed)
                 return;
 
-            // Never trust the amount from the webhook payload alone - the stored
-            // pending payment is the authoritative record of what was owed.
+            // The stored pending payment is authoritative, not the webhook payload.
             if (payment.Amount != verifiedAmount)
             {
                 payment.MarkAsFailed("Settled amount did not match the amount due.");
@@ -129,10 +125,7 @@ namespace RideAway.Application.Services
                 payment.Id, payment.RideId);
         }
 
-        /// <summary>
-        /// Settles a cash payment. Only the driver assigned to the ride may confirm
-        /// that they collected the fare.
-        /// </summary>
+        /// <summary>Settles a cash payment. Only the assigned driver may confirm.</summary>
         public async Task ConfirmCashCollectionAsync(Guid rideId, Guid driverId)
         {
             var ride = await _unitOfWork.RideRepository.GetByIdAsync(rideId);

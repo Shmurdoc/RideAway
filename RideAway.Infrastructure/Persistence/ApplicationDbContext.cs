@@ -19,7 +19,7 @@ namespace RideAway.Infrastructure.Persistence
         {
             base.OnModelCreating(modelBuilder);
 
-            // Configure User entity
+            // User
             modelBuilder.Entity<User>()
                 .Property(u => u.CurrentLocation)
                 .HasMaxLength(255);
@@ -28,10 +28,8 @@ namespace RideAway.Infrastructure.Persistence
                 .Property(u => u.Name)
                 .HasMaxLength(256);
 
-            // Emails are normalised to lower-case on write, so the uniqueness check is
-            // case-insensitive by construction. The unique index is what actually
-            // prevents duplicate accounts under concurrent registration; the
-            // application-level check is only a friendly-error path.
+            // Emails are normalised to lower-case on write. The index stops duplicates
+            // under concurrent registration; the app check is the friendly error.
             modelBuilder.Entity<User>()
                 .Property(u => u.Email)
                 .HasMaxLength(256);
@@ -41,7 +39,7 @@ namespace RideAway.Infrastructure.Persistence
                 .IsUnique()
                 .HasFilter("[Email] IS NOT NULL");
 
-            // Configure Ride entity
+            // Ride
             modelBuilder.Entity<Ride>()
                 .Property(r => r.Fare)
                 .HasColumnType("decimal(18,4)");
@@ -50,8 +48,7 @@ namespace RideAway.Infrastructure.Persistence
                 .HasOne(r => r.Rider)
                 .WithMany()
                 .HasForeignKey(r => r.RiderId)
-                // Never cascade: deleting a rider must not erase completed, paid rides.
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Restrict); // deleting a rider must not erase paid rides
 
             modelBuilder.Entity<Ride>()
                 .HasOne(r => r.Driver)
@@ -59,16 +56,13 @@ namespace RideAway.Infrastructure.Persistence
                 .HasForeignKey(r => r.DriverId)
                 .OnDelete(DeleteBehavior.Restrict); // Restrict for Driver relationship to avoid cycles
 
-            // Configure Payment entity
+            // Payment
             modelBuilder.Entity<Payment>()
                 .Property(p => p.Amount)
                 .HasColumnType("decimal(18, 4)");
 
-            // A ride can be settled at most once. This is the database-level guarantee
-            // that a replayed or concurrent payment request cannot double-charge.
-            // PaymentStatus is persisted as an int, so the filter is derived from the
-            // enum rather than hard-coded - otherwise reordering the enum would
-            // silently stop the constraint from matching anything.
+            // One settlement per ride. Filter derives from the enum so reordering it
+            // cannot silently break the constraint.
             modelBuilder.Entity<Payment>()
                 .HasIndex(p => p.RideId)
                 .IsUnique()

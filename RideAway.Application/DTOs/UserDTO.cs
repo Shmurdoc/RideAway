@@ -17,11 +17,7 @@ namespace RideAway.Application.DTOs
         public string Password { get; set; } = string.Empty;
         public string PhoneNumber { get; set; } = string.Empty;
 
-        /// <summary>
-        /// Requested account type. Ignored unless it is <see cref="UserRole.Driver"/>;
-        /// <see cref="UserRole.Admin"/> can never be self-assigned. Drivers need an
-        /// elevated account, so the field stays, but it is not a privilege grant.
-        /// </summary>
+        /// <summary>Only <see cref="UserRole.Driver"/> is honoured; anything else registers as Rider.</summary>
         public UserRole Role { get; set; }
     }
 
@@ -30,10 +26,7 @@ namespace RideAway.Application.DTOs
         public Guid Id { get; set; }
     }
 
-    /// <summary>
-    /// Safe representation of a user for API responses. Deliberately has no
-    /// PasswordHash member, so it cannot be leaked by serializing the wrong type.
-    /// </summary>
+    /// <summary>What the API returns for a user. Has no password field by design.</summary>
     public class UserProfileDTO
     {
         public Guid Id { get; set; }

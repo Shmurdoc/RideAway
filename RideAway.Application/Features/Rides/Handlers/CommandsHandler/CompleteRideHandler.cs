@@ -28,7 +28,6 @@ namespace RideAway.Application.Features.Rides.Handlers.Commands
                 throw new RideNotFoundException("Ride not found.");
             }
 
-            // Only the assigned driver may complete, and only from InProgress.
             ride.Complete(request.DriverId);
 
             await _unitOfWork.RideRepository.UpdateAsync(ride);

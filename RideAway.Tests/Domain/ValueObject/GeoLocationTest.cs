@@ -50,8 +50,6 @@ public class GeoLocationTests
     [Fact]
     public void Constructor_WithNaN_ShouldThrowArgumentException()
     {
-        // NaN fails every comparison, so a plain range check used to let it through and
-        // the bad value would then reach the Google Maps API.
         Action act = () => new GeoLocation(double.NaN, 0);
 
         act.Should().Throw<ArgumentException>();

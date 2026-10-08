@@ -43,8 +43,7 @@ that wires everything through `Program.cs`. See [docs/ARCHITECTURE.md](docs/ARCH
 
 ## Configuration
 
-All settings live in `RideAway.API/appsettings.json` unless noted. Secrets are never
-checked into the repository:
+All settings live in `RideAway.API/appsettings.json` unless noted. No secrets are checked in:
 
 | Setting | Purpose | Required |
 | --- | --- | --- |
@@ -60,13 +59,11 @@ checked into the repository:
 | `Twilio:AccountSid`, `Twilio:AuthToken` | SMS notifications | Optional |
 | `Cors:AllowedOrigins` | Comma-separated allowed browser origins | Yes (Production) |
 
-The API **fails fast at startup** when required settings are missing, so a misconfigured
-deployment cannot silently serve traffic without auth or a database.
+The API refuses to start when required settings are missing.
 
 ### Production
 
-For production, supply secrets via environment variables (or your secret manager). The
-app reads them from the environment, so no secrets need to be committed:
+In production, supply secrets as environment variables:
 
 ```bash
 export ConnectionStrings__DefaultConnection="Server=...;Database=RideAway;..."
@@ -83,13 +80,12 @@ export Cors__AllowedOrigins__0="https://app.rideaway.com"
 
 ### Health checks
 
-`GET /health` reports the API and database health (200 `Healthy` / 503 `Unhealthy`).
-Wire it into your orchestrator's health probe (e.g., Docker `HEALTHCHECK` or Kubernetes
-liveness/readiness).
+`GET /health` reports API and database health (200 / 503). Point your orchestrator's
+health probe at it.
 
 ### Docker
 
-A multi-stage `Dockerfile` builds the app and runs it as an unprivileged user on `:8080`:
+The `Dockerfile` builds the app and runs it as a non-root user on `:8080`:
 
 ```bash
 docker build -t rideaway-api .
@@ -129,10 +125,9 @@ All endpoints except `POST /api/auth/login` and `POST /api/User` require a beare
 
 Driver-only endpoints (`/api/drivers/*`) require a user with role `Driver`.
 
-The identity of the caller always comes from the token. Client-supplied user or driver
-ids are rejected, so one user cannot act on another user's ride, payment or location.
+Caller identity comes from the token. You cannot act on another user's ride, payment or location.
 
-Both credential endpoints are rate limited per IP (10 requests / 5 minutes by default).
+Login and registration are rate limited per IP (10 requests / 5 minutes by default).
 
 ## API Reference
 
@@ -172,21 +167,17 @@ Both credential endpoints are rate limited per IP (10 requests / 5 minutes by de
 
 ## Payments
 
-The amount charged is **always** the ride's server-computed fare - it is never taken
-from the request. A ride moves through
-`Requested -> Accepted -> InProgress -> Completed -> Paid`, and each transition is
-validated by the `Ride` aggregate, so a cancelled or in-flight ride cannot be settled
-and a settled ride cannot be settled twice.
+The amount charged is the ride's server-computed fare, never a request value. A ride
+moves `Requested -> Accepted -> InProgress -> Completed -> Paid`; cancelled or in-flight
+rides cannot settle, and settled rides cannot settle twice.
 
-Card payments are **pending** until Stripe confirms them. Creating a checkout session
-is not treated as payment: the ride is marked paid only when a signature-verified
-`checkout.session.completed` webhook arrives and the settled amount and currency match
-what was owed. Cash payments are also pending until the assigned driver confirms
-collection via `/api/drivers/confirm-cash`.
+Card payments stay pending until Stripe confirms them. The ride is marked paid only when
+a signature-verified `checkout.session.completed` webhook arrives with a matching amount
+and currency. Cash stays pending until the assigned driver confirms collection via
+`/api/drivers/confirm-cash`.
 
-To accept card payments, register `POST /api/webhooks/stripe` as a webhook endpoint in
-the Stripe dashboard for the `checkout.session.completed` event, and set the signing
-secret as `Stripe:WebhookSecret`.
+Register `POST /api/webhooks/stripe` in the Stripe dashboard for
+`checkout.session.completed` and set `Stripe:WebhookSecret`.
 
 ## Build & Test
 
@@ -195,10 +186,7 @@ dotnet build RideAway.sln --nologo
 dotnet test RideAway.Tests/RideAway.Tests.csproj --nologo
 ```
 
-The solution builds with zero warnings (nullable reference types enabled) and the test
-suite covers the application use cases, services, and API controllers.
-
-The repository pins the .NET SDK in `global.json` so local builds match CI exactly.
+Zero warnings; 82 tests. `global.json` pins the SDK so local builds match CI.
 
 ## Known Limitations
 
@@ -219,8 +207,8 @@ Remaining gaps:
 - PBKDF2 iteration count is 100,000. That is below current OWASP guidance for
   PBKDF2-HMAC-SHA256 (600,000+). The stored hash format carries no version or cost
   parameter, so raising it needs a rehash-on-login migration.
-- Command validation is hand-rolled inside handlers rather than using a validation
-  library, so new commands must be reviewed for input validation by hand.
+- Command validation is hand-rolled inside handlers (no validation library), so
+  review input checks on every new command.
 - Cancellation does not void an in-flight Stripe Checkout Session; a customer can still
   complete payment for a cancelled ride (the ride will not settle, and the payment is
   recorded, but the money is not automatically refunded).

@@ -35,12 +35,8 @@ public class UserController : ControllerBase
         return result is not null ? Ok(result) : BadRequest("User not created");
     }
 
-    /// <summary>
-    /// Gets the profile of the authenticated caller. Only an administrator may read
-    /// another user's profile.
-    /// </summary>
-    /// <param name="id">The user id. Must match the caller unless the caller is an admin.</param>
-    /// <returns>The user profile, 403 if the caller may not read it, or 404 if no user matches.</returns>
+    /// <summary>Gets a profile. Your own, or anyone's if you are an admin.</summary>
+    /// <param name="id">The user id.</param>
     [HttpGet("{id}")]
     public async Task<IActionResult> GetUserById(Guid id)
     {
@@ -76,7 +72,6 @@ public class UserController : ControllerBase
         if (command == null)
             return BadRequest(new { Message = "Invalid request. Command cannot be null." });
 
-        // The requester is the authenticated caller, never a body-supplied id.
         var result = await _mediator.Send(command with { RequesterId = User.GetUserId() });
 
         return result
@@ -95,11 +90,8 @@ public class UserController : ControllerBase
         if (command == null)
             return BadRequest(new { Message = "Invalid request. Command cannot be null." });
 
-        // The payer is the authenticated caller; the amount comes from the ride's fare.
         var result = await _mediator.Send(command with { RiderId = User.GetUserId() });
 
-        // A pending payment is a success from the caller's point of view: the ride is
-        // settled once the payment is confirmed, not before.
         return Ok(new
         {
             Message = result.TransactionReference.Length > 0
@@ -122,7 +114,6 @@ public class UserController : ControllerBase
         if (dto == null)
             return BadRequest("Ride request cannot be null.");
 
-        // The rider is the authenticated caller.
         var command = new RequestRideCommand(dto, User.GetUserId());
         var ride = await _mediator.Send(command);
         return Ok(ride);

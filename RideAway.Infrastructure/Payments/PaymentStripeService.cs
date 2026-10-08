@@ -25,11 +25,7 @@ namespace RideAway.Infrastructure.Payments
             _cancelUrl = config["Stripe:CancelUrl"] ?? "https://localhost:7039/payment/cancel";
         }
 
-        /// <summary>
-        /// Creates a Stripe Checkout session. Creating a session does NOT mean the
-        /// customer paid - the payment is only settled once Stripe sends a
-        /// signature-verified <c>checkout.session.completed</c> webhook.
-        /// </summary>
+        /// <summary>Creates a Checkout session. Session creation is not payment.</summary>
         public async Task<PaymentResult> CreatePaymentSession(decimal amount, string currency)
         {
             if (amount <= 0)
@@ -45,8 +41,7 @@ namespace RideAway.Infrastructure.Payments
                         PriceData = new SessionLineItemPriceDataOptions
                         {
                             Currency = currency,
-                            // Round rather than truncate: ZAR is a 2-decimal currency and a
-                            // truncating cast silently under-collects on every odd amount.
+                            // Round, don't truncate, or odd amounts under-collect by a cent.
                             UnitAmount = (long)decimal.Round(amount * 100m, 0, MidpointRounding.AwayFromZero),
                             ProductData = new SessionLineItemPriceDataProductDataOptions
                             {

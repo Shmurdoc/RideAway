@@ -65,7 +65,6 @@ public class ProcessPaymentCommandHandlerTests
         await Assert.ThrowsAsync<UnauthorizedAccessException>(
             () => _handler.Handle(command, CancellationToken.None));
 
-        // No payment may be created for someone else's ride.
         _paymentServiceMock.Verify(
             p => p.CreatePaymentAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<decimal>(), It.IsAny<PaymentMethod>()),
             Times.Never);
@@ -112,8 +111,6 @@ public class ProcessPaymentCommandHandlerTests
 
         await _handler.Handle(command, CancellationToken.None);
 
-        // The amount passed to the payment service is the ride's fare, and the payee
-        // is the authenticated rider.
         _paymentServiceMock.Verify(
             p => p.CreatePaymentAsync(ride.Id, _riderId, 250.75m, PaymentMethod.cash),
             Times.Once);
@@ -132,8 +129,6 @@ public class ProcessPaymentCommandHandlerTests
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        // A pending payment must not settle the ride. Settlement happens in the
-        // webhook / cash-confirmation path only.
         result.IsSuccessful.Should().BeFalse();
         ride.Status.Should().Be(RideStatus.Completed);
 

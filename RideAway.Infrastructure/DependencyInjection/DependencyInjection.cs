@@ -68,9 +68,8 @@ namespace RideAway.Infrastructure.DependencyInjection
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
                 {
-                    // Keep the claim types exactly as issued. With the default inbound
-                    // mapping enabled, "role" is rewritten to the long ClaimTypes.Role
-                    // URI, which silently broke every [Authorize(Roles = ...)] check.
+                    // Without this, "role" is rewritten to the ClaimTypes.Role URI and
+                    // every [Authorize(Roles = ...)] check fails.
                     options.MapInboundClaims = false;
 
                     options.TokenValidationParameters = new TokenValidationParameters

@@ -11,7 +11,7 @@ namespace RideAway.Domain.Entities
 {
     public class Payment : BaseEntity
     {
-        /// <summary>The ride this payment settles. Required to enforce one settlement per ride.</summary>
+        /// <summary>The ride this payment settles. One settlement per ride, enforced by unique index.</summary>
         public Guid RideId { get; set; }
 
         public Guid UserId { get; set; }
@@ -23,11 +23,7 @@ namespace RideAway.Domain.Entities
         public string? TransactionReference { get; set; } // options for Stripe/Card
         public string? FailureReason { get; set; }
 
-        /// <summary>
-        /// Creates a payment in a pending state. Nothing is marked successful until a
-        /// trusted source confirms it: a signature-verified Stripe webhook for card
-        /// payments, or the assigned driver confirming cash collection.
-        /// </summary>
+        /// <summary>Creates a pending payment. Settlement happens through confirmation paths.</summary>
         public static Payment CreatePending(Guid rideId, Guid userId, decimal amount, PaymentMethod method, string? transactionReference = null)
         {
             if (amount <= 0)
@@ -46,9 +42,7 @@ namespace RideAway.Domain.Entities
             };
         }
 
-        /// <summary>
-        /// Marks the payment successful. Only ever called from a verified settlement path.
-        /// </summary>
+        /// <summary>Marks the payment successful. Settles once; rejects replays.</summary>
         public void MarkAsCompleted(string? transactionReference = null)
         {
             if (Status == PaymentStatus.Completed)

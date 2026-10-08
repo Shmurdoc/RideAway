@@ -40,8 +40,6 @@ namespace RideAway.Application.Features.Rides.Handlers.Commands
                 throw new RideNotFoundException("Ride not found.");
             }
 
-            // The aggregate verifies the caller is the assigned driver and that the
-            // ride is in the Accepted state.
             ride.StartTrip(request.DriverId);
 
             if (ride.Driver == null || string.IsNullOrEmpty(ride.Driver.CurrentLocation))

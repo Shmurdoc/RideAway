@@ -16,8 +16,6 @@ namespace RideAway.Application.Features.Rides.Handlers.Commands
 
         public async Task<bool> Handle(UpdateDriverLocationCommand request, CancellationToken cancellationToken)
         {
-            // The driver being updated is always the authenticated caller, so a driver
-            // can only move their own location.
             var driver = await _unitOfWork.UserRepository.GetByIdAsync(request.DriverId);
 
             if (driver == null)

@@ -80,7 +80,6 @@ namespace RideAway.Tests.Domain.Entities
         [Fact]
         public void MarkAsPaid_ShouldThrow_WhenRideIsNotCompleted()
         {
-            // A cancelled or in-flight ride must never be settleable.
             var ride = new Ride("Pickup", "Destination", 100) { Status = RideStatus.Canceled };
 
             ride.Invoking(r => r.MarkAsPaid())
@@ -90,7 +89,6 @@ namespace RideAway.Tests.Domain.Entities
         [Fact]
         public void MarkAsPaid_ShouldThrow_WhenRideIsAlreadyPaid()
         {
-            // Guards against a replayed payment request settling the same ride twice.
             var ride = new Ride("Pickup", "Destination", 100) { Status = RideStatus.Completed };
             ride.MarkAsPaid();
 

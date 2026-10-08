@@ -10,10 +10,7 @@ namespace RideAway.Domain.Entities
     {
         public Guid RiderId { get; set; }
 
-        /// <summary>
-        /// Navigation properties are never serialized: they would drag the whole user
-        /// graph (and any future lazy-loaded associations) into API responses.
-        /// </summary>
+        /// <summary>Never serialized; would drag the user graph into responses.</summary>
         [JsonIgnore]
         public User Rider { get; set; } = null!;
 
@@ -75,11 +72,7 @@ namespace RideAway.Domain.Entities
             Status = RideStatus.Canceled;
         }
 
-        /// <summary>
-        /// Settles the ride. Only a finished ride can be settled, and only once: this
-        /// is what stops a cancelled or in-flight ride from being resurrected by a
-        /// replayed payment request.
-        /// </summary>
+        /// <summary>Settles the ride. Completed only, once. Terminal state.</summary>
         public void MarkAsPaid()
         {
             if (Status == RideStatus.Paid)

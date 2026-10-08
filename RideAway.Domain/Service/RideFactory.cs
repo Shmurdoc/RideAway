@@ -15,8 +15,6 @@ namespace RideAway.Domain.Service
             if (riderId == Guid.Empty)
                 throw new ArgumentException("A ride must have a rider.", nameof(riderId));
 
-            // The rider is recorded at creation. Without this the ride has no owner and
-            // no ownership check can be enforced later.
             return new Ride(pickupLocation, destination, fare)
             {
                 RiderId = riderId,

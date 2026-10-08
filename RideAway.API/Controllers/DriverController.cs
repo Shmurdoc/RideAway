@@ -21,18 +21,14 @@ public class DriverController : ControllerBase
         _paymentProcessingService = paymentProcessingService;
     }
 
-    /// <summary>
-    /// Updates the current location of the authenticated driver.
-    /// </summary>
-    /// <param name="dto">The driver's new location.</param>
-    /// <returns>200 if the location was updated, 400 otherwise.</returns>
+    /// <summary>Updates the authenticated driver's location.</summary>
+    /// <param name="dto">The new location.</param>
     [HttpPost("update-location")]
     public async Task<IActionResult> UpdateLocation([FromBody] DriverLocationUpdateRequest dto)
     {
         if (dto == null || string.IsNullOrWhiteSpace(dto.CurrentLocation))
             return BadRequest(new { Message = "A location is required." });
 
-        // A driver can only ever update their own location.
         var command = new UpdateDriverLocationCommand(
             new RideAway.Application.DTOs.DriverLocationUpdateDTO { CurrentLocation = dto.CurrentLocation },
             User.GetUserId());
@@ -44,18 +40,14 @@ public class DriverController : ControllerBase
             : BadRequest(new { Success = false, Message = "Failed to update location." });
     }
 
-    /// <summary>
-    /// Starts a ride after collecting the rider.
-    /// </summary>
+    /// <summary>Starts a ride after collecting the rider.</summary>
     /// <param name="command">The ride to start.</param>
-    /// <returns>The in-progress ride, or 404 if the ride does not exist.</returns>
     [HttpPost("collect-rider")]
     public async Task<IActionResult> CollectRider([FromBody] CollectRiderCommand command)
     {
         if (command == null)
             return BadRequest(new { Message = "Invalid request. Command cannot be null." });
 
-        // The driver is the authenticated caller, not a body-supplied id.
         var ride = await _mediator.Send(command with { DriverId = User.GetUserId() });
 
         if (ride == null)
@@ -64,11 +56,8 @@ public class DriverController : ControllerBase
         return Ok(new { Message = "Rider collected. Ride in progress.", Data = ride });
     }
 
-    /// <summary>
-    /// Completes a ride that is in progress.
-    /// </summary>
+    /// <summary>Completes an in-progress ride.</summary>
     /// <param name="command">The ride to complete.</param>
-    /// <returns>200 if the ride was completed, 400 otherwise.</returns>
     [HttpPost("complete")]
     public async Task<IActionResult> CompleteRide([FromBody] CompleteRideCommand command)
     {
@@ -82,12 +71,8 @@ public class DriverController : ControllerBase
             : BadRequest(new { Message = "Failed to complete ride." });
     }
 
-    /// <summary>
-    /// Confirms that cash was collected for a ride, settling the payment.
-    /// Only the driver assigned to the ride may confirm this.
-    /// </summary>
-    /// <param name="command">The ride whose cash was collected.</param>
-    /// <returns>200 when the payment is settled.</returns>
+    /// <summary>Confirms cash collected for a ride. Settles the payment.</summary>
+    /// <param name="command">The ride the cash was collected for.</param>
     [HttpPost("confirm-cash")]
     public async Task<IActionResult> ConfirmCash([FromBody] ConfirmCashCommand command)
     {
@@ -99,11 +84,8 @@ public class DriverController : ControllerBase
         return Ok(new { Message = "Cash collection confirmed. Ride marked as paid." });
     }
 
-    /// <summary>
-    /// Accepts a ride assigned to the authenticated driver.
-    /// </summary>
-    /// <param name="command">The ride id to accept.</param>
-    /// <returns>200 if the ride was accepted, 400 otherwise.</returns>
+    /// <summary>Accepts a ride.</summary>
+    /// <param name="command">The ride id.</param>
     [HttpPost("accept")]
     public async Task<IActionResult> AcceptRide([FromBody] AcceptRideCommand command)
     {
@@ -117,11 +99,8 @@ public class DriverController : ControllerBase
             : BadRequest(new { Message = "Failed to accept the ride." });
     }
 
-    /// <summary>
-    /// Cancels a ride the authenticated driver is involved in.
-    /// </summary>
-    /// <param name="command">The ride id to cancel.</param>
-    /// <returns>200 if the ride was canceled, 400 otherwise.</returns>
+    /// <summary>Cancels a ride the driver is party to.</summary>
+    /// <param name="command">The ride id.</param>
     [HttpPost("cancel")]
     public async Task<IActionResult> CancelRide([FromBody] CancelRideCommand command)
     {

@@ -30,9 +30,6 @@ public class UserControllerTests
         AuthenticateAs(_callerId, UserRole.Rider);
     }
 
-    /// <summary>
-    /// Controllers resolve the caller from the token, so every test needs a principal.
-    /// </summary>
     private void AuthenticateAs(Guid userId, UserRole role)
     {
         var principal = new ClaimsPrincipal(new ClaimsIdentity(new[]
@@ -67,7 +64,6 @@ public class UserControllerTests
         var okResult = Assert.IsType<OkObjectResult>(result);
         var returned = Assert.IsType<UserProfileDTO>(okResult.Value);
 
-        // The response must never carry credential material.
         var serialized = JsonConvert.SerializeObject(okResult.Value);
         serialized.Should().NotContain("PasswordHash");
         returned.Email.Should().Be(userDto.Email);
@@ -98,7 +94,6 @@ public class UserControllerTests
 
         await _controller.GetUserById(routeId);
 
-        // The handler must learn who is asking, so it can refuse cross-user reads.
         captured.Should().NotBeNull();
         captured!.RequesterId.Should().Be(_callerId);
         captured.Id.Should().Be(routeId);
@@ -196,7 +191,6 @@ public class UserControllerTests
         Assert.IsType<OkObjectResult>(result);
         captured!.RiderId.Should().Be(_callerId);
 
-        // There is no client-supplied amount anywhere in the command any more.
         typeof(ProcessPaymentCommand).GetProperties()
             .Should().NotContain(p => p.Name == "Amount");
         typeof(ProcessPaymentCommand).GetProperties()

@@ -361,3 +361,9 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd.opencode/
+
+# Local discard pile. Never commit - holds files removed from the repo.
+/Delete all/
+
+# Editor tooling state. Never commit.
+.opencode/

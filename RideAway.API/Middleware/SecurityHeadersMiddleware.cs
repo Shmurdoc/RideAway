@@ -1,9 +1,6 @@
 namespace RideAway.API.Middleware;
 
-/// <summary>
-/// Adds baseline security response headers. An API returns JSON and never needs to
-/// execute scripts, so the policy can be maximally restrictive.
-/// </summary>
+/// <summary>Baseline security response headers. JSON API, so the policy is strict.</summary>
 public class SecurityHeadersMiddleware
 {
     private readonly RequestDelegate _next;

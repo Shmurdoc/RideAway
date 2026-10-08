@@ -29,8 +29,6 @@ namespace RideAway.Application.Features.Rides.Handlers.Commands
                 throw new RideNotFoundException("Ride not found.");
             }
 
-            // The aggregate refuses cancellation by anyone other than the rider or the
-            // assigned driver, and refuses it once the ride has finished.
             ride.Cancel(request.RequesterId);
 
             await _unitOfWork.RideRepository.UpdateAsync(ride);

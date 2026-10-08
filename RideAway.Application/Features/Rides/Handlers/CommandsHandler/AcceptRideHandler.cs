@@ -28,8 +28,6 @@ namespace RideAway.Application.Features.Rides.Handlers.Commands
                 throw new RideNotFoundException("Ride not found.");
             }
 
-            // Assigns the authenticated driver and enforces the Requested -> Accepted
-            // transition inside the aggregate.
             ride.Accept(request.DriverId);
 
             await _unitOfWork.RideRepository.UpdateAsync(ride);

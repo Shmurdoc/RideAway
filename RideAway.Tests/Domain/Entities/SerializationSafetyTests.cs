@@ -6,11 +6,7 @@ using RideAway.Domain.Value_Object;
 
 namespace RideAway.Tests.Domain.Entities;
 
-/// <summary>
-/// Guards against credentials leaking through API responses. These are regression
-/// tests: the entity graph used to be returned straight from controllers, which
-/// serialised PasswordHash and the whole User navigation graph.
-/// </summary>
+/// <summary>Entities must serialize without credentials or user graphs.</summary>
 public class SerializationSafetyTests
 {
     private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web);
@@ -46,8 +42,6 @@ public class SerializationSafetyTests
 
         var json = JsonSerializer.Serialize(user, Options);
 
-        // Without this, a lazily-loaded Vehicle (and anything hanging off it) would
-        // end up in the response.
         json.Should().NotContain("Vehicle");
     }
 

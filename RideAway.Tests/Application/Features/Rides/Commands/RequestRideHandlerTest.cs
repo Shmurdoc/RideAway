@@ -94,8 +94,6 @@ public class RequestRideHandlerTests
     [Fact]
     public async Task Handle_ShouldRecordTheAuthenticatedRider_SoTheRideHasAnOwner()
     {
-        // A ride must always carry the authenticated rider. Without this the ride has
-        // no owner and no ownership check can be enforced later.
         var dto = new CreateRideRequestDTO
         {
             PickupLocation = "123 Main St",

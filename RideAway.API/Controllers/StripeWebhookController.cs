@@ -7,12 +7,7 @@ using Stripe;
 
 namespace RideAway.API.Controllers;
 
-/// <summary>
-/// Receives Stripe webhook events. This is the only path by which a card payment
-/// becomes successful, so it verifies the Stripe signature on every request and
-/// returns the same response regardless of whether the event was already processed
-/// (Stripe retries anything that is not a 2xx).
-/// </summary>
+/// <summary>Stripe webhook. Card payments only settle through here.</summary>
 [ApiController]
 [Route("api/webhooks")]
 [AllowAnonymous]
@@ -48,8 +43,7 @@ public class StripeWebhookController : ControllerBase
         if (string.IsNullOrWhiteSpace(signature))
             return BadRequest("Missing Stripe-Signature header.");
 
-        // Read the raw body: signature verification is computed over the exact bytes
-        // Stripe sent, so any re-serialisation of a parsed model would break it.
+        // Signature is computed over the exact bytes sent; do not parse first.
         using var reader = new StreamReader(Request.Body);
         var payload = await reader.ReadToEndAsync();
 

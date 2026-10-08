@@ -30,18 +30,15 @@ namespace RideAway.Application.Features.Rides.Handlers.Commands
             if (ride == null)
                 throw new RideNotFoundException("Ride not found.");
 
-            // Only the rider who requested the ride may pay for it.
             if (ride.RiderId != request.RiderId)
                 throw new UnauthorizedAccessException("You are not authorized to pay for this ride.");
 
-            // A settled ride is terminal: replaying the request must not move money again.
             if (ride.Status == RideStatus.Paid)
                 throw new PaymentProcessingException("This ride has already been paid.");
 
             if (ride.Status != RideStatus.Completed)
                 throw new InvalidRideStatusException($"A ride cannot be paid while it is {ride.Status}.");
 
-            // The amount comes from the server-computed fare, never from the request.
             var amount = ride.Fare;
             if (amount <= 0)
                 throw new PaymentProcessingException("This ride has no payable fare.");
@@ -58,9 +55,7 @@ namespace RideAway.Application.Features.Rides.Handlers.Commands
                 throw new PaymentProcessingException("Payment processing failed unexpectedly.");
             }
 
-            // The ride is not marked paid here. It is marked paid only when a trusted
-            // source settles the payment: a signature-verified Stripe webhook for card
-            // payments, or the assigned driver confirming cash collection.
+            // Settlement happens in the webhook / cash-confirmation path, not here.
             return paymentResult;
         }
     }

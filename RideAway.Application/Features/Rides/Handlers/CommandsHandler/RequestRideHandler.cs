@@ -49,8 +49,6 @@ namespace RideAway.Application.Features.Rides.Handlers.Commands
                 dto.RideCategory
             );
 
-            // The driver is chosen by the matching service, not supplied by the client,
-            // and the rider is always the authenticated caller.
             Guid? driverId = dto.DriverId == Guid.Empty ? null : dto.DriverId;
 
             var ride = _rideFactory.CreateRide(

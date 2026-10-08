@@ -15,7 +15,7 @@ namespace RideAway.Domain.Value_Object
 
         public GeoLocation(double latitude, double longitude)
         {
-            // NaN fails every comparison, so a plain range check lets it through.
+            // NaN fails every comparison, so range checks alone let it through.
             if (!double.IsFinite(latitude) || latitude < -90 || latitude > 90)
                 throw new ArgumentException("Latitude must be a finite value between -90 and 90 degrees.", nameof(latitude));
             if (!double.IsFinite(longitude) || longitude < -180 || longitude > 180)

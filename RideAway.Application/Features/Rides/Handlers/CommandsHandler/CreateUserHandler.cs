@@ -42,8 +42,7 @@ namespace RideAway.Application.Features.Rides.Handlers.Commands
             if (existingUser != null)
                 throw new ArgumentException("A user with this email already exists.");
 
-            // Admin is never self-assignable. Drivers need an elevated account, so the
-            // requested type is honoured only when it is exactly Driver.
+            // Admin is not self-assignable; only Driver is honoured.
             var role = dto.Role == UserRole.Driver ? UserRole.Driver : UserRole.Rider;
 
             var user = new User

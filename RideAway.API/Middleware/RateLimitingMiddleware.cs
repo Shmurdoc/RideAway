@@ -3,11 +3,8 @@ using System.Collections.Concurrent;
 namespace RideAway.API.Middleware;
 
 /// <summary>
-/// A fixed-window, per-client rate limiter.
-///
-/// The built-in ASP.NET Core rate limiting middleware is only available from .NET 7,
-/// and this project targets the (EOL) .NET 6 line, so the limiter is implemented here
-/// to keep the credential endpoints protected without adding a dependency.
+/// Fixed-window, per-client rate limiter. Hand-rolled because the framework limiter
+/// only ships from .NET 7 and this project targets .NET 6.
 /// </summary>
 public class RateLimitingMiddleware
 {
@@ -50,10 +47,7 @@ public class RateLimitingMiddleware
         await _next(context);
     }
 
-    /// <summary>
-    /// The anonymous, credential-bearing endpoints: login and registration. Everything
-    /// else is authenticated and only has to live within the global budget.
-    /// </summary>
+    /// <summary>Login and registration. Everything else only has the global budget.</summary>
     private static bool IsStrictEndpoint(HttpRequest request)
     {
         var path = request.Path;
@@ -68,8 +62,7 @@ public class RateLimitingMiddleware
 
     private bool TryAcquire(string client, string policyName, RateLimitPolicy policy)
     {
-        // Each policy needs its own counter, otherwise the global and strict budgets
-        // consume from the same allowance and the strict one trips early.
+        // Separate counter per policy, or the budgets share one allowance.
         var counter = _counters.GetOrAdd($"{policyName}:{client}", _ => new WindowCounter());
 
         return counter.TryAcquire(policy.PermitLimit, policy.Window);

@@ -38,10 +38,8 @@ public class ExceptionMiddleware
 
     private static async Task HandleExceptionAsync(HttpContext context, Exception ex)
     {
-        // Only exceptions we own get a hand-written, constant message. Broad framework
-        // exceptions (ArgumentException, InvalidOperationException, KeyNotFoundException)
-        // are thrown from many places and quote argument names and internal values, so
-        // their message is logged but never reflected to the caller.
+        // Framework exceptions can quote argument names and values, so only our own
+        // exceptions get their message reflected. The rest get a constant message.
         var (statusCode, message) = ex switch
         {
             RideNotFoundException => (HttpStatusCode.NotFound, "Ride not found."),

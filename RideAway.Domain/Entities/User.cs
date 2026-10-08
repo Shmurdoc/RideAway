@@ -13,9 +13,7 @@ namespace RideAway.Domain.Entities
         public string? Name { get; set; } = string.Empty;
         public string? Email { get; set; } = string.Empty;
 
-        /// <summary>
-        /// Never serialized: leaking the hash lets an attacker crack it offline.
-        /// </summary>
+        /// <summary>Never serialized.</summary>
         [JsonIgnore]
         public string? PasswordHash { get; set; } = string.Empty;
 

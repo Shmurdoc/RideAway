@@ -31,8 +31,7 @@ builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(optio
 
 var app = builder.Build();
 
-// Behind a reverse proxy/ingress this is what makes UseHttpsRedirection and the
-// client IP (used by the rate limiter) reflect the real request.
+// Behind a proxy this restores the real client IP and scheme.
 app.UseForwardedHeaders(new ForwardedHeadersOptions
 {
     ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
